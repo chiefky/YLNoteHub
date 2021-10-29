@@ -239,41 +239,11 @@ b. 串行队列是主队列，当前任务所在也是主队列（该场景已�
 
 a.串行队列（非主队列）
 
-<img src="./image/GCD_serial_nest.png" alt="串行队列嵌套任务" style="zoom:60%;" />
-
-<img src="./image/GCD_serial_nest.png" alt="串行队列嵌套任务" style="zoom:60%;" />
+<img src="./image/GCD_队列_同异步.png" alt="串行队列嵌套任务" style="zoom:60%;" />
 
 代码（以一种情况为例分析其输出结果）
 
 ```objc
-/// 【异步】嵌【异步】
-- (void)testSerial_async_nest_async {
-    dispatch_queue_t queue = dispatch_queue_create("queue.yuli.seria", DISPATCH_QUEUE_SERIAL);
-    NSLog(@"---------1---------");
-    dispatch_async(queue, ^{
-        // 追加任务 1
-     NSLog(@"---------2---------");
-        dispatch_async(queue, ^{
-            // 追加任务 2
-          NSLog(@"---------3---------");
-          [NSThread sleepForTimeInterval:2];              // 模拟耗时操作
-        });
-        [NSThread sleepForTimeInterval:2];              // 模拟耗时操作
-          NSLog(@"---------4---------");
-    });
-  
-    NSLog(@"---------5---------");
-    dispatch_async(queue, ^{
-        // 追加任务 3
-      NSLog(@"---------6---------");
-      [NSThread sleepForTimeInterval:2];   // 模拟耗时操作  
-      NSLog(@"---------7---------");
-    });
 
-  NSLog(@"---------7---------");
-
-}
-
-/// 结果：1--> 5 --> 8 --> 2 -->  4 --> 6 --> 7 --> 3
 ```
 
