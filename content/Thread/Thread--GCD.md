@@ -54,7 +54,7 @@ GCD的核心是由 **任务 + 队列 + 函数** 构成：
 - 是否等待队列的任务执行完毕
 - 是否具备开启新线程的能力
 
-### **GCD**队列
+### **GCD**队列分类
 
 队列类型介绍
 
@@ -103,110 +103,131 @@ GCD的核心是由 **任务 + 队列 + 函数** 构成：
 | 低     | QOS_CLASS_UTILITY<br />  // 不需要马上就能得到结果，比如下载任务。当资源被限制后，此权限的任务将运行在节能模式下以提供更多资源给更高的优先级任务 | DISPATCH_QUEUE_PRIORITY_LOW        |
 | 后台   | QOS_CLASS_BACKGROUND<br />  // 后台权限，通常用户都不能意识到有任务正在进行，比如数据备份等。大多数处于节能模式下，需要把资源让出来给更高的优先级任务 | DISPATCH_QUEUE_PRIORITY_BACKGROUND |
 
-# 1. GCD的基本使用
+# 2. GCD的基本使用
 
 使用步骤：
 
 1. 创建一个队列（串行队列或并发队列）；
 2. 将任务（同步任务或异步任务）追加到任务的等待队列中，然后系统就会根据任务类型执行任务。
 
-## 1.1 创建/获取队列
+## 2.1 队列
 
-* 创建队列的方法
+### 2.1.1 创建队列的方法
 
-  使用`dispatch_queue_create`方法创建队列
+使用`dispatch_queue_create`方法创建队列
 
-  ```objective-c
-  dispatch_queue_t s_queue = dispatch_queue_create("queue.yuli.serial", DISPATCH_QUEUE_SERIAL); // 串行队列 
-  dispatch_queue_t c_queue = dispatch_queue_create("queue.yuli.concurrent", DISPATCH_QUEUE_CONCURRENT); // 并发队列
-  
-  ```
+```objective-c
+dispatch_queue_t s_queue = dispatch_queue_create("queue.yuli.serial", DISPATCH_QUEUE_SERIAL); // 串行队列 
+dispatch_queue_t c_queue = dispatch_queue_create("queue.yuli.concurrent", DISPATCH_QUEUE_CONCURRENT); // 并发队列
 
-  设置队列的其他性质：
+```
 
-  > - 创建队列时设置队列优先级：**dispatch_queue_attr_make_with_qos_class**
-  >
-  > ​    🌰代码：
-  >
-  > ```objective-c
-  > dispatch_queue_attr_t attr_t = dispatch_queue_attr_make_with_qos_class(DISPATCH_QUEUE_CONCURRENT,QOS_CLASS_USER_INTERACTIVE, QOS_MIN_RELATIVE_PRIORITY);
-  > dispatch_queue_t queue = dispatch_queue_create("com.tangh.test", attr_t);
-  > ```
-  >
-  > - - dispatch_queue_attr_make_with_qos_class 的第二个参数代表队列的优先级，目前优先级有这几个选择：
-  >
-  >   - - **QOS_CLASS_USER_INTERACTIVE** （DISPATCH_QUEUE_PRIORITY_HIGH）
-  >     - **QOS_CLASS_USER_INITIATED** （DISPATCH_QUEUE_PRIORITY_HIGH）
-  >     - **QOS_CLASS_UTILITY** （DISPATCH_QUEUE_PRIORITY_LOW）
-  >     - **QOS_CLASS_DEFAULT** （DISPATCH_QUEUE_PRIORITY_DEFAULT）
-  >     - **QOS_CLASS_BACKGROUND** （DISPATCH_QUEUE_PRIORITY_BACKGROUND）
-  >
-  > - - dispatch_queue_attr_make_with_qos_class 的第三个参数，需要填写一个负数的偏移值，小于0且大于等于-15(QOS_MIN_RELATIVE_PRIORITY即表示为-15)，必须这么填，不然函数会返回一个null。这个参数主要作用是在你给定的优先级系统不能满足的情况下，如果需要调度的话，给定一个调度偏移值。
-  >
-  > - 
-  >
-  > - 修改队列的优先级：**dispatch_set_target_queue**
-  >
-  > ​    🌰代码：
-  >
-  > ```objective-c
-  > dispatch_queue_t queue1 = dispatch_get_global_queue(NSQualityOfServiceUserInitiated, 0);
-  > dispatch_queue_t queue2 = dispatch_get_global_queue(NSQualityOfServiceUserInteractive, 0);
-  > ```
-  >
-  > 
-  >
-  > ​    // 将第二个队列权限设置为第一个队列一样：
-  >
-  > ​    dispatch_set_target_queue(queue2, queue1);
-  >
-  > - - dispatch_set_target_queue 一共有两个功能，除了 变更队列优先级 外，还可以 改变队列层次体系。当我们想让不同队列中的任务同步的执行时，可以创建一个串行队列，然后将这些队列的target指向新建的队列即可。（经测试，这些任务会在 target 队列，相同的线程里执行）
-  >
-  > ​	   例如：将多个串行queue指定到目标串行queue, 以实现某任务在多个串行 queue 也是先后执行 而非并行
-  >
-  > ```objective-c
-  >     dispatch_queue_t targetQueue = dispatch_queue_create("test.target.queue", DISPATCH_QUEUE_SERIAL);  
-  > dispatch_queue_t queue1 = dispatch_queue_create("test.1", DISPATCH_QUEUE_SERIAL);  
-  > dispatch_queue_t queue2 = dispatch_queue_create("test.2", DISPATCH_QUEUE_SERIAL);  
-  > 
-  > dispatch_set_target_queue(queue1, targetQueue);  
-  > dispatch_set_target_queue(queue2, targetQueue);  
-  > 
-  > dispatch_async(queue1, ^{  
-  >   // 会在 target 队列，相同的线程里执行
-  >   NSLog(@"1 in");  
-  >   [NSThread sleepForTimeInterval:3.f];  
-  >   NSLog(@"1 out");  
-  > });  
-  > 
-  > dispatch_async(queue2, ^{  
-  >   // 会在 target 队列，相同的线程里执行
-  >   NSLog(@"2 in");  
-  >   [NSThread sleepForTimeInterval:2.f];  
-  >   NSLog(@"2 out");  
-  > });  
-  > 
-  > // 1 in  
-  > // 1 out  
-  > // 2 in  
-  > // 2 out  
-  > ```
-  >
-  > ​     注意：dispatch_set_target_queue设置时机应在设置block任务之前，同时不能互相循环设置
+设置or修改队列优先级：
+
+> - 创建队列时设置队列优先级：**dispatch_queue_attr_make_with_qos_class**
+>
+> ​    🌰代码：
+>
+> ```objective-c
+> dispatch_queue_attr_t attr_t = dispatch_queue_attr_make_with_qos_class(DISPATCH_QUEUE_CONCURRENT,QOS_CLASS_USER_INTERACTIVE, QOS_MIN_RELATIVE_PRIORITY);
+> dispatch_queue_t queue = dispatch_queue_create("com.tangh.test", attr_t);
+> ```
+>
+> - - dispatch_queue_attr_make_with_qos_class 的第二个参数代表队列的优先级，目前优先级有这几个选择：
+>
+>   - - **QOS_CLASS_USER_INTERACTIVE** （DISPATCH_QUEUE_PRIORITY_HIGH）
+>     - **QOS_CLASS_USER_INITIATED** （DISPATCH_QUEUE_PRIORITY_HIGH）
+>     - **QOS_CLASS_UTILITY** （DISPATCH_QUEUE_PRIORITY_LOW）
+>     - **QOS_CLASS_DEFAULT** （DISPATCH_QUEUE_PRIORITY_DEFAULT）
+>     - **QOS_CLASS_BACKGROUND** （DISPATCH_QUEUE_PRIORITY_BACKGROUND）
+>
+> - - dispatch_queue_attr_make_with_qos_class 的第三个参数，需要填写一个负数的偏移值，小于0且大于等于-15(QOS_MIN_RELATIVE_PRIORITY即表示为-15)，必须这么填，不然函数会返回一个null。这个参数主要作用是在你给定的优先级系统不能满足的情况下，如果需要调度的话，给定一个调度偏移值。
+>
+> - 
+>
+> - 修改队列的优先级：**dispatch_set_target_queue**
+>
+> ​    🌰代码：
+>
+> ```objective-c
+> dispatch_queue_t queue1 = dispatch_get_global_queue(NSQualityOfServiceUserInitiated, 0);
+> dispatch_queue_t queue2 = dispatch_get_global_queue(NSQualityOfServiceUserInteractive, 0);
+> ```
+>
+> 
+>
+> ​    // 将第二个队列权限设置为第一个队列一样：
+>
+> ​    dispatch_set_target_queue(queue2, queue1);
+>
+> - - dispatch_set_target_queue 一共有两个功能，除了 变更队列优先级 外，还可以 改变队列层次体系。当我们想让不同队列中的任务同步的执行时，可以创建一个串行队列，然后将这些队列的target指向新建的队列即可。（经测试，这些任务会在 target 队列，相同的线程里执行）
+>
+> ​	   例如：将多个串行queue指定到目标串行queue, 以实现某任务在多个串行 queue 也是先后执行 而非并行
+>
+> ```objective-c
+>     dispatch_queue_t targetQueue = dispatch_queue_create("test.target.queue", DISPATCH_QUEUE_SERIAL);  
+> dispatch_queue_t queue1 = dispatch_queue_create("test.1", DISPATCH_QUEUE_SERIAL);  
+> dispatch_queue_t queue2 = dispatch_queue_create("test.2", DISPATCH_QUEUE_SERIAL);  
+> 
+> dispatch_set_target_queue(queue1, targetQueue);  
+> dispatch_set_target_queue(queue2, targetQueue);  
+> 
+> dispatch_async(queue1, ^{  
+>   // 会在 target 队列，相同的线程里执行
+>   NSLog(@"1 in");  
+>   [NSThread sleepForTimeInterval:3.f];  
+>   NSLog(@"1 out");  
+> });  
+> 
+> dispatch_async(queue2, ^{  
+>   // 会在 target 队列，相同的线程里执行
+>   NSLog(@"2 in");  
+>   [NSThread sleepForTimeInterval:2.f];  
+>   NSLog(@"2 out");  
+> });  
+> 
+> // 1 in  
+> // 1 out  
+> // 2 in  
+> // 2 out  
+> ```
+>
+> ​     注意：dispatch_set_target_queue设置时机应在设置block任务之前，同时不能互相循环设置
+
+### 2.1.2 获取队列的方法
+
+系统提供了两个默认队列，主队列（串行）和全局队列（并发）。
+
+```objective-c
+dispatch_queue_t m_queue = dispatch_get_main_queue(); // 主队列
+dispatch_queue_t g_queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0); // 全局队列
+```
+
+### 2.1.2 设置、获取队列标记
+
+这两个 API 类似于`objc_setAssociatedObject`跟`objc_getAssociatedObject`，FMDB 里就用到这个来防止死锁，来看看 FMDB 的部分源码：
+
+```objc
+static const void * const kDispatchQueueSpecificKey = &kDispatchQueueSpecificKey;
+//创建一个串行队列来执行数据库的所有操作
+_queue = dispatch_queue_create([[NSString stringWithFormat:@"fmdb.%@", self] UTF8String], NULL);
+
+//通过key标示队列，设置context为self
+dispatch_queue_set_specific(_queue, kDispatchQueueSpecificKey, (__bridge void *)self, NULL);
+```
+
+当要执行数据库操作时，如果在 queue 里面的 block 执行过程中，又调用了 indatabase 方法，需要检查是不是同一个 queue，因为同一个 queue 的话会产生死锁情况
+
+```objc
+- (void)inDatabase:(void (^)(FMDatabase *db))block {
+    FMDatabaseQueue *currentSyncQueue = (__bridge id)dispatch_get_specific(kDispatchQueueSpecificKey);
+    assert(currentSyncQueue != self && "inDatabase: was called reentrantly on the same queue, which would lead to a deadlock");
+}
+```
 
 
-* 获取队列的方法
 
-  系统提供了两个默认队列，主队列（串行）和全局队列（并发）。
-
-  ```objective-c
-  dispatch_queue_t m_queue = dispatch_get_main_queue(); // 主队列
-  dispatch_queue_t g_queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0); // 全局队列
-  ```
-  
-  
-
-## 1.2 添加任务
+## 2.3 添加任务
 
 * 同步任务
 
