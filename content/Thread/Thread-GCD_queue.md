@@ -734,8 +734,6 @@ dispatch_sync一般都在当前线程执行,如果是主队列的任务还是会
 
 如果我们调用dispatch_barrier_async时将Barrier blocks提交到一个global queue，barrier blocks执行效果与dispatch_async()一致；只有将Barrier blocks提交到使用DISPATCH_QUEUE_CONCURRENT属性创建的queue时它才会表现的如同预期。
 
-队列的流程比较复杂，上述分析难免有遗漏或者理解不到位的地方，请指正学习。
-
 # 2. 队列的服务质量与优先级
 
 队列的服务质量与优先级的对应关系：
@@ -748,7 +746,7 @@ dispatch_sync一般都在当前线程执行,如果是主队列的任务还是会
 | 低     | QOS_CLASS_UTILITY<br />  // 不需要马上就能得到结果，比如下载任务。当资源被限制后，此权限的任务将运行在节能模式下以提供更多资源给更高的优先级任务 | DISPATCH_QUEUE_PRIORITY_LOW        |
 | 后台   | QOS_CLASS_BACKGROUND<br />  // 后台权限，通常用户都不能意识到有任务正在进行，比如数据备份等。大多数处于节能模式下，需要把资源让出来给更高的优先级任务 | DISPATCH_QUEUE_PRIORITY_BACKGROUND |
 
-## 1.2  dispatch_queue_attr_make_with_qos_class
+## 2.1  dispatch_queue_attr_make_with_qos_class
 
 作用： **初始化队列时，设置队列服务质量**
 
@@ -763,11 +761,11 @@ dispatch_sync一般都在当前线程执行,如果是主队列的任务还是会
 }
 ```
 
-## 1.3 dispatch_set_target_queue
+## 2.2 dispatch_set_target_queue
 
 作用： **变更队列优先级or改变队列层次体系**
 
-### 1.3.1 变更队列优先级
+### 2.2.1 变更队列优先级
 
 ```objective-c
 - (void)testQueue_set_target {
@@ -783,7 +781,7 @@ dispatch_sync一般都在当前线程执行,如果是主队列的任务还是会
 }
 ```
 
-### 1.3.2 改变队列层次体系
+### 2.2.2 改变队列层次体系
 
 ```objective-c
 /// 目标队列可以成为原队列的执行阶层(✅：验证通过)
@@ -809,4 +807,22 @@ dispatch_sync一般都在当前线程执行,如果是主队列的任务还是会
 }
 
 ```
+
+# 3. 相关面试题
+
+## 3.1  **GCD** 队列的挂起与恢复
+
+#### 1.为什么挂起与恢复"只适用于自定义的队列，不适用于**dispatch_get_global_queue**等" ？
+
+答：Dispatch全局并发队列在系统管理的线程池之上提供优先级存储桶。系统将根据需求和系统负载决定分配给该池的线程数量。具体地说，系统会尝试为该资源保持良好的并发级别，并在系统调用中阻塞太多现有工作线程时创建新线程。
+
+全局并发队列是共享资源，因此，此资源的每个用户都有责任不向此池提交无限量的工作，特别是可能阻塞的工作，因为这可能会导致系统产生非常大量的线程(又名。线爆炸)。
+
+提交到全局并发队列的工作项在提交顺序方面没有排序保证，提交到这些队列的工作项可以并发调用。
+
+Dispatch全局并发队列是DISPATCH_GET_GLOBAL_QUEUE()返回的众所周知的全局对象。这些对象不能修改。调用DISPATCH_SUSPEND()、DISPATCH_RESUME()、DISPATCH_SET_CONTEXT()等 **在`dispatch_get_global_queue`队列中使用时不起作用**。
+
+
+
+
 

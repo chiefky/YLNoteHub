@@ -205,6 +205,18 @@ int main(int argc, const char * argv[]) {
 
 通过__forwarding, 无论是在block中还是 block外访问__block变量, 也不管该变量在栈上或堆上, 都能顺利地访问同一个__block变量。
 
+### 总结：
+
+### 1. __block 的实现原理（或 __block的作用？）
+
+
+
+### 2. block的内存管理
+
+# 
+
+
+
 # 3. block内循环引用解决方案
 
 *  方案一：借助weak
