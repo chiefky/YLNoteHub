@@ -99,6 +99,55 @@ void CFRunLoopAddCommonMode(CFRunLoopRef rl, CFStringRef modeName) {
 
 # 4.performSelector
 
+### 4.1 基本接口
+
+**与时间无关的接口（本质上只是简单的函数`objc_msg_lookup`调用）**
+
+最基本的performSelector有三个接口方法，可以不传参，传一个参数以及传两个参数。
+
+```objective-c
+- (id)performSelector:(SEL)aSelector;
+- (id)performSelector:(SEL)aSelector withObject:(id)object;
+- (id)performSelector:(SEL)aSelector withObject:(id)object1 withObject:(id)object2;
+```
+
+以传递两个参数为例，源码：
+
+```objective-c
+- (id)performSelector:(SEL)aSelector
+           withObject:(id)object1
+           withObject:(id)object2 {
+    IMP msg;
+    if (aSelector == 0) {
+        [NSException raise: NSInvalidArgumentException
+                    format: @"%@ null selector given", NSStringFromSelector(_cmd)];
+    }
+    msg = objc_msg_lookup(self, aSelector);
+    if (!msg) {
+        [NSException raise: NSGenericException
+                    format: @"invalid selector '%s' passed to %s",
+         sel_getName(aSelector), sel_getName(_cmd)];
+        return nil;
+    }
+    return (*msg)(self, aSelector, object1, object2);
+}
+```
+
+**总结：可见就是根据方法名，使用Runtime中的`objc_msg_lookup()`获取到函数指针IMP，进而进行函数调用。当然，还有对方法名和函数指针的容错处理。**
+
+### 4.2 指定延迟时间
+
+```objective-c
+- (void)performSelector:(SEL)aSelector withObject:(nullable id)anArgument afterDelay:(NSTimeInterval)delay inModes:(NSArray<NSRunLoopMode> *)modes;
+- (void)performSelector:(SEL)aSelector withObject:(nullable id)anArgument afterDelay:(NSTimeInterval)delay;
++ (void)cancelPreviousPerformRequestsWithTarget:(id)aTarget selector:(SEL)aSelector object:(nullable id)anArgument;
++ (void)cancelPreviousPerformRequestsWithTarget:(id)aTarget;
+```
+
+### 4.3 指定Mode
+
+### 4.4 指定线程
+
 
 
 # 5.Runloop与Autoreleasepool
@@ -111,5 +160,9 @@ Autoreleasepool销毁：
 
 * runloop循环一圈即将进入休眠时，销毁当前pool，然后新建一个新的pool
 * runloop退出时，彻底销毁当前pool。
+
+Runloop销毁：线程结束时。
+
+
 
 ## 5.2
