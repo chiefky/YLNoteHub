@@ -1,4 +1,30 @@
-# 1. Error：内存泄露
+# 1. 内存泄露
+
+内存泄露主要分两类：循环引用、内存激增或者未及时释放，另外还有Foundation与CoreFoundation对象桥接过程中错误使用关键字引起的内存泄漏
+
+* block循环引用
+
+* timer与target的循环引用,泄漏原因是，timer对target持有造成的引用计数+1，如果timer没有invalidate，那么这个引用计数就不会-1;
+
+  > 与此原理相同的一个使用场景：`performSelector:withObject:afterDelay:`，其中也存在引用计数的+1；
+  >
+  > > 经典用例：
+  > >
+  > > 从A控制器push到B控制器，B控制器此时执行一个方法：`[self performSelector:@selector(printInfo) withObject:nil afterDelay:100];`。此时从B控制器pop到A控制器，很明显B控制器并没有销毁，因为Runloop还（间接）强引用着它，可以理解为出现了内存泄露(尽管100s后`printInfo`方法得到执行，B控制器会销毁)。
+  > >
+  > > 比较好的做法:
+  > >
+  > > 及时取消掉之前的延迟调用:`cancelPreviousPerformRequestsWithTarget: selector:object:`，那么`cancelPreviousPerformRequestsWithTarget: selector:object:`做了什么呢?
+  > >
+  > > 1. 获取Runloop内部持有的`_timedPerformers`数组(数组中的是`GSTimedPerformer`对象)。
+  > > 2. 创建一个C语言数组，并把`_timedPerformers`数组中的内容copy到这个C语言数组array。
+  > > 3. 遍历该C语言数组array：如果给定参数中的`target`、`argument`、`selector`均**一一对应**，那么销毁`GSTimedPerformer`对象中的定时器，并根据当前的索引移除`_timedPerformers`数组的`GSTimedPerformer`对象。
+
+* 在子线程产生大量autorelease对象，却没有适当的手动添加Autoreleasepool，导致所有中间对象积压在同一个Autoreleasepool中，容易出现内存峰值，直到子线程销毁时才能得到释放
+
+* 在子线程runloop 的使用了错误开启方式：`run`和`runUntileDate`，runloop无法终止，内部产生的autorelease对象和thread对象都无法及时释放，只能在App退出时才能释放
+
+* 在子线程使用timer（隐含条件：必须开启runloop，使用`runMode:UntilDate:`正确开启），在主线程或其他线程执行`invalidate`手动终止timer。 【从`invalidate`到`limitDate`这段时间间隔内存在内存泄漏，timer并未销毁，runloop也没有终止，timer所在线程依然存在，直到limitDate才delloc】
 
 ## 1.1 performSelector引起的内存泄漏警告
 

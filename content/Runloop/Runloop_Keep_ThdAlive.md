@@ -158,9 +158,11 @@ Source0 解读：
 
   
 
-  <font color='red'> 有个疑问，为什么在外部终止timer runloop不会退出？</font>
+  <font color='red'> 有个疑问，为什么在线程外部终止timer runloop不会退出？</font>
 
-  答：[timer invalid]之后，timer源从runloop中移除，如果是通过`run`或`runUntilData:futrue`开启的会无限重复start->exit这个过程（因为这个runloop中没有事件源也没有timer），并不是没有退出，而是每次runloop都是开启后立即退出！！！
+  答：[timer invalid]之后，猜测是，timer终止但是并没有成功从runloop中移除，runloop直到limitDate都不会销毁。
+
+  另一种情况如果是通过`run`或`runUntilData:futrue`开启的runloop，无法终止是因为会无限重复start->exit这个过程（因为这个runloop中没有事件源也没有timer），并不是没有退出，而是每次runloop都是开启后立即退出！！！
 
 实例：
 
