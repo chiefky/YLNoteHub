@@ -213,4 +213,55 @@ NSBlockOperation 是 NSOperation 类的另外一个系统预定义的子类，�
 - finished
   返回 operation 的完成状态，同样值变化时需要在 `isFinished` 上抛出 KVO 通知
 
- 
+ 这里我们看看著名的网络框架 AFNetworking 中关于 NSOperation 的使用：
+
+> AFNetworking 3.0 全面使用 `NSURLSession`，而 `NSURLSession` 本身是异步的、且没有 `NSURLConnection` 需要 runloop 配合的问题，因此在3.0版本中并没有使用 NSOperation，代码得到很大的简化。这里我们说的是 AFNetworking 2.3.1 版本。
+
+在 AFNetworking 中 AFURLConnectionOperation 是个异步的 NSOperation 子类，其 `start` 方法如下：
+
+![img](http://zxfcumtcs.github.io/img/AFURLConnectionOperation-start.png)
+
+从上面 `start` 方法的实现可以看到：
+
+1. 用 lock(递归锁) 保证了thread-safe；
+2. 检查了 operation 是否已被 cancel；
+3. 检查了 operation 是否已 ready；
+4. 通过子线程实现并发；
+5. 在 state setter 中实现了 KVO。
+
+![setter state](http://zxfcumtcs.github.io/img/AFURLConnectionOperation-statesetter.png)
+
+再来看看 AFURLConnectionOperation 使用的子线程：
+
+![](http://zxfcumtcs.github.io/img/AFURLConnectionOperation-thread.png)
+
+可以看到，所有 AFURLConnectionOperation 实例底层使用的是同一个子线程，并在该线程中启动了 runloop（`NSURLConnection` 的网络回调必须要有 runloop 的配合，通过port-based input source 唤醒 runloop 处理网络事件），也就是说 AFURLConnectionOperation 是在一条常驻子线程中处理网络回调。
+
+前面我们提到 operation 被 cancel 时也被认为是完成，这点在自定义 `start` 时同样需要注意：
+
+![](http://zxfcumtcs.github.io/img/AFURLConnectionOperation-cancel.png)
+
+在 AFURLConnectionOperation 的 `cancelConnection` 以及 `connection:didFailWithError:` 方法中都会调用其 `finish` 方法：
+
+![](http://zxfcumtcs.github.io/img/AFURLConnectionOperation-finish.png)
+
+ps：虽然 NSOperation 支持 cancel，但在调用 `cancel` 方法后该如何处理完全由我们自定义的 `start` 方法决定(当然良好的设计应该要符合 cancel 的语义)。
+
+同时，AFURLConnectionOperation 也实现了以下方法：
+
+![](http://zxfcumtcs.github.io/img/AFURLConnectionOperation-isReady-isFinished.png)
+
+
+
+# **4. 关于 NSOperation 其他细节问题**
+
+- dependencies:
+  我们可以在 operation 间添加依赖关系，在某个 operation 所依赖的 operations 完成之前，其一直处于未就绪状态(`isReady` 为 NO)。
+  需要注意的是，依赖关系是 operation 自身的状态，也就是说有依赖关系的 operations 可以处在不同的 NSOperationQueue 中。
+- isReady:
+  `isReady` 默认实现主要处理 operation 间的依赖关系，当我们自定义该方法时需要考虑 `super` 的值，如 AFURLConnectionOperation中关于 `isReady` 的实现：[![img](http://zxfcumtcs.github.io/img/AFURLConnectionOperation-isReady.png)](http://zxfcumtcs.github.io/img/AFURLConnectionOperation-isReady.png)
+- qualityOfService:
+  ~~用于表示 operation 在获取系统资源时的优先级，默认值：`NSQualityOfServiceBackground`~~，(❌，<font color="orange">苹果注释中是background，实际代码验证默认是default</font>)，我们可以根据需要给 operation 赋不同的优化级，如最高优化级：`NSQualityOfServiceUserInteractive`。
+- queuePriority:
+  用于设置 operation 在 operation queue 中的相对优化级，同一 queue 中优化级高的 operation(`isReady` 为 YES) 会被优先执行。需要注意区分`qualityOfService`(在系统层面，operation 与其他线程获取资源的优先级)与`queuePriority`(同一 queue 中 operation 间执行的优化级)的区别。
+  同时，需要注意`dependencies`(严格控制执行顺序)与`queuePriority`(queue 内部相对优先级)的区别。
