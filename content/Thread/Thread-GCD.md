@@ -103,7 +103,7 @@ GCD的核心是由 **任务 + 队列 + 函数** 构成：
 | 低     | QOS_CLASS_UTILITY<br />  // 不需要马上就能得到结果，比如下载任务。当资源被限制后，此权限的任务将运行在节能模式下以提供更多资源给更高的优先级任务 | DISPATCH_QUEUE_PRIORITY_LOW        |
 | 后台   | QOS_CLASS_BACKGROUND<br />  // 后台权限，通常用户都不能意识到有任务正在进行，比如数据备份等。大多数处于节能模式下，需要把资源让出来给更高的优先级任务 | DISPATCH_QUEUE_PRIORITY_BACKGROUND |
 
-# 2. GCD的基本使用
+# 2. GCD使用
 
 使用步骤：
 
@@ -247,9 +247,9 @@ dispatch_queue_set_specific(_queue, kDispatchQueueSpecificKey, (__bridge void *)
 
 
 
-# 2. GCD复杂使用场景
+## 2.4 GCD复杂使用场景
 
-## 2.1 非嵌套场景
+### 2.4.1 非嵌套场景
 
 a. 串行队列不是主队列
 
@@ -437,7 +437,7 @@ b. 串行队列是主队列，当前任务所在也是主队列（该场景已�
 
 ```
 
-## 2.2 嵌套场景
+### 2.4.2 嵌套场景
 
 a.串行队列（非主队列）
 
@@ -448,4 +448,41 @@ a.串行队列（非主队列）
 ```objc
 
 ```
+
+# q. Q&A 
+
+## q.1 以下代码有没有问题？如果没有问题下面运行结果是什么？
+
+```objective-c
+@interface ViewController ()
+@property (nonatomic, strong) NSString *string;
+
+@end
+
+@implementation ViewController
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    self.view.backgroundColor = [UIColor whiteColor];
+    
+    dispatch_queue_t queue = dispatch_queue_create("com.yuli.gcd.dispatch_queue", DISPATCH_QUEUE_CONCURRENT);
+    for (int i = 1; i <= 100000; i++) {
+        
+        dispatch_async(queue, ^{
+            self.string = [NSString stringWithFormat:@"test_%d",i];
+            NSLog(@"self.string: %@",self.string);
+        });
+        
+    }
+}
+@end
+
+```
+
+答：
+
+> 两个问题：
+>
+> 1. `nonatomic`修饰代表非原子性，多线程修改时，因为setter方法内部会对旧值release,可能会造成旧值的过度释放造成崩溃；
+> 2. 因为是async多线程异步操作，for循环结束时，最终值具有不确定性
 

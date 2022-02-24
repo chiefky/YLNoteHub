@@ -1,4 +1,4 @@
-# **1.Runloop**和线程的关系
+### **1. Runloop**和线程的关系?
 
 * 线程和 RunLoop 之间是一一对应的，其关系是保存在一个全局的 Dictionary 里。
 
@@ -23,9 +23,7 @@
 
   销毁：
 
-# 2.Runloop Mode
-
-## 2.1系统默认注册了哪些运行模式(Mode)？
+### 2.  系统默认注册了哪些运行模式(Mode)？
 
 * 供开发者使用的有：
 
@@ -39,13 +37,13 @@
 
 <font color='red'>Tip: `kCFRunLoopCommonModes:`这是一个占位的 Mode，代表的不是一种mode 而是一组modes（添加至common mode set 中的所有mode）</font>
 
-## 2.2苹果内部 Runloop 有多少种运行模式？
+### 3. 苹果内部 Runloop 有多少种运行模式？
 
 苹果内部的 Mode，但那些 Mode 在开发中就很难遇到; 如图：
 
 <img src="./image/Runloop_test_0.png" alt="img" style="zoom:50%;" />
 
-## 2.3 如何创建一个CFRunLoopMode？
+### 4. 如何创建一个CFRunLoopMode？
 
 我们没有办法直接创建一个CFRunLoopMode对象，但是我们可以调用`CFRunLoopAddCommonMode` 传入一个字符串向 **RunLoop** 中添加 **Mode**，传入的字符串即为 Mode 的名字，Mode对象应该是此时在RunLoop内部创建的。
 
@@ -75,11 +73,7 @@ void CFRunLoopAddCommonMode(CFRunLoopRef rl, CFStringRef modeName) {
 }
 ```
 
-
-
-# 3.Runloop Mode Item
-
-## 3.1 Runloop、Runloop Mode 、mode item三者关系
+### 5. Runloop、Runloop Mode 、mode item三者关系
 
 一个Runloop对象可以对应多个Runloop Mode，一个Mode下可以添加多种（或多个）mode item；
 
@@ -87,7 +81,7 @@ void CFRunLoopAddCommonMode(CFRunLoopRef rl, CFStringRef modeName) {
 
 一个 item 可以被同时加入多个 mode。但一个 item 被重复加入同一个 mode 时是不会有效果的。
 
-## 3.2 mode item有几种
+### 6. mode item有几种
 
 **Source/Timer/Observer** 被统称为 **mode item**；
 
@@ -95,74 +89,16 @@ void CFRunLoopAddCommonMode(CFRunLoopRef rl, CFStringRef modeName) {
 *  **CFRunLoopTimerRef (定时源)**
 * **CFRunLoopObserverRef (观察者)**
 
+### 7. Runloop 的理解？主线程和子线程的Runloop 的区别？怎么结束runloop？
 
+### 8. Runloop 都用过哪些场景？
 
-# 4.performSelector
+### 9. 什么情况下会造成Runloop 当前循环一直不结束？
 
-### 4.1 基本接口
+### 10. iOS 常用的计时器有哪几种，一般在什么场景下使用？
 
-**与时间无关的接口（本质上只是简单的函数`objc_msg_lookup`调用）**
+### 11. timer 怎么解决循环引用？
 
-最基本的performSelector有三个接口方法，可以不传参，传一个参数以及传两个参数。
+### 12. autoRelease 的底层结构？什么情况下会产生新Page?
 
-```objective-c
-- (id)performSelector:(SEL)aSelector;
-- (id)performSelector:(SEL)aSelector withObject:(id)object;
-- (id)performSelector:(SEL)aSelector withObject:(id)object1 withObject:(id)object2;
-```
-
-以传递两个参数为例，源码：
-
-```objective-c
-- (id)performSelector:(SEL)aSelector
-           withObject:(id)object1
-           withObject:(id)object2 {
-    IMP msg;
-    if (aSelector == 0) {
-        [NSException raise: NSInvalidArgumentException
-                    format: @"%@ null selector given", NSStringFromSelector(_cmd)];
-    }
-    msg = objc_msg_lookup(self, aSelector);
-    if (!msg) {
-        [NSException raise: NSGenericException
-                    format: @"invalid selector '%s' passed to %s",
-         sel_getName(aSelector), sel_getName(_cmd)];
-        return nil;
-    }
-    return (*msg)(self, aSelector, object1, object2);
-}
-```
-
-**总结：可见就是根据方法名，使用Runtime中的`objc_msg_lookup()`获取到函数指针IMP，进而进行函数调用。当然，还有对方法名和函数指针的容错处理。**
-
-### 4.2 指定延迟时间
-
-```objective-c
-- (void)performSelector:(SEL)aSelector withObject:(nullable id)anArgument afterDelay:(NSTimeInterval)delay inModes:(NSArray<NSRunLoopMode> *)modes;
-- (void)performSelector:(SEL)aSelector withObject:(nullable id)anArgument afterDelay:(NSTimeInterval)delay;
-+ (void)cancelPreviousPerformRequestsWithTarget:(id)aTarget selector:(SEL)aSelector object:(nullable id)anArgument;
-+ (void)cancelPreviousPerformRequestsWithTarget:(id)aTarget;
-```
-
-### 4.3 指定Mode
-
-### 4.4 指定线程
-
-
-
-# 5.Runloop与Autoreleasepool
-
-## 5.1Autoreleasepool的生命周期
-
-Autoreleasepool第一次创建：runloop启动时
-
-Autoreleasepool销毁：
-
-* runloop循环一圈即将进入休眠时，销毁当前pool，然后新建一个新的pool
-* runloop退出时，彻底销毁当前pool。
-
-Runloop销毁：线程结束时。
-
-
-
-## 5.2
+### 13. 先产生一个 A Pool，又嵌套一个 B Pool，这时候对象C 会在哪个 Pool 下释放？

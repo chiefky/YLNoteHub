@@ -1,154 +1,49 @@
-# 1.pthread
-
-## 1.1 pthread 介绍
-
-- 全称 POSIX Thread，POSIX（Portable Operating System Interface）表示可移植操作系统接口；
-- 一套用 C 语言写的通用的多线程 API；
-- 适用于 Unix / Linux / Windows 等系统；
-- 跨平台/可移植；
-- 使用难度大、使用频率低；
-- 线程生命周期由程序员管理；
-- 现在 iOS 中用到 pthread 的多数情况是使用 pthread_mutex 互斥锁，性能较高。
-
-## 1.2 pthread 的简单使用
-
-```objectivec
-#import <pthread.h>
-
-- (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event
-{
-    //创建子线程
-    pthread_t pthread; //线程编号
-    /*
-     参数一：线程编号的地址
-     参数二：线程的属性
-     参数三：线程要执行的函数 void * （*）（void *）
-     参数四：函数的参数，参数类型：void *
-     返回值：0代表成功，非0代表失败
-     pthread_create(pthread_t  _Nullable *restrict _Nonnull,
-                    const pthread_attr_t *restrict _Nullable,
-                    void * _Nullable (* _Nonnull)(void * _Nullable),
-                    void *restrict _Nullable)
-     */
-    int result = pthread_create(&pthread, NULL, demo, NULL);
-    if (result == 0) {
-        NSLog(@"成功");
-    } else {
-        NSLog(@"失败");
-    }
-}
-
-void *demo(void *param) {
-    NSLog(@"hello,%@",[NSThread currentThread]);
-    return NULL;
-}
-```
-
-# 2. NSThread
-
-## 2.1 NSThread 介绍
+# 1. NSThread 介绍
 
 - 使用更加面向对象；
 - 简单易用，可直接操作线程对象；
 - 语言 OC，线程生命周期由程序员管理，偶尔使用。
 
-## 2.2 NSThread 的基本使用
+### 初始化接口
 
-方式一：需要手动调用 start 方法开启线程
+加上iOS10新增的，现在有5种初始化方法，实例方法中非block初始化的需要调用start方法进行线程开启：
 
-```objectivec
-    // SEL
-    NSThread *thread = [[NSThread alloc] initWithTarget:self selector:@selector(demo) object:nil];
-    [thread start];
+- \+ (void)detachNewThreadWithBlock:(void (^)(void))block; // iOS 10 新增
+- \+ (void)detachNewThreadSelector:(SEL)selector toTarget:(id)target withObject:(nullable id)argument;
+- \- (instancetype)initWithBlock:(void (^)(void))block; // iOS 10 新增
+- \- (instancetype)initWithTarget:(id)target selector:(SEL)selector object:(nullable id)argument;
+- \- (instancetype)init;
+
+
+
+# 2. 线程优先级权限
+
+在iOS中，目前线程优先级有以下几种权限：
+
+```objective-c
+typedef NS_ENUM(NSInteger, NSQualityOfService) {
+  // 用户交互权限，属于最高等级，常被用于处理交互事件或者刷新UI，因为这些需要即时的
+  NSQualityOfServiceUserInteractive = 0x21,
+  
+  // 为了可以进一步的后续操作，当用户发起请求结果需要被立即展示，比如当点了列表页某条信息后需要立即加载详情信息
+  NSQualityOfServiceUserInitiated = 0x19,
+
+  // 不需要马上就能得到结果，比如下载任务。当资源被限制后，此权限的任务将运行在节能模式下以提供更多资源给更高的优先级任务
+  NSQualityOfServiceUtility = 0x11,
+
+  // 后台权限，通常用户都不能意识到有任务正在进行，比如数据备份等。大多数处于节能模式下，需要把资源让出来给更高的优先级任务
+  NSQualityOfServiceBackground = 0x09,
+
+  // 默认权限，具体权限由系统根据实际情况来决定使用哪个等级权限，如果实际情况不太利于决定使用何种权限，则从UserInitiated和Utility之间选一个权限并使用
+  NSQualityOfServiceDefault = -1
+
+ }
+
 ```
 
-```objectivec
-    // block
-    NSThread *thread = [[NSThread alloc] initWithBlock:^{
-        NSLog(@"hello,%@",[NSThread currentThread]);
-    }];
-    [thread start];
-```
+关于`NSQualityOfServiceDefault`官方解释：<font color='red'>The priority level of this QoS falls between user-initiated and utility. This QoS is not intended to be used by developers to classify work. Work that has no QoS information assigned is treated as default, and the GCD global queue runs at this level.</font>
 
-方式二：
+总结：
 
-```objectivec
-    // SEL
-    [NSThread detachNewThreadSelector:@selector(demo) toTarget:self withObject:nil];
-```
-
-```objectivec
-    // block
-    [NSThread detachNewThreadWithBlock:^{
-        NSLog(@"hello,%@",[NSThread currentThread]);
-    }];
-```
-
-方式三：
-
-```objectivec
-    // SEL
-    [self performSelectorInBackground:@selector(demo) withObject:nil];
-```
-
-## 2.3 线程的状态、生命周期
-
-<img src="./image/Thread_NSThread_0.png" alt="img" style="zoom:60%;" />
-
-
-
-```objectivec
-- (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event
-{
-    //新建状态
-    NSThread *thread = [[NSThread alloc] initWithTarget:self selector:@selector(demo) object:nil];
-    //就绪状态
-    [thread start];  
-}
-
-- (void)demo {    
-    //运行状态
-    for (int i = 0; i < 20; i++) {
-        NSLog(@"%d",i);
-        if (i == 5) {
-            //阻塞状态
-            [NSThread sleepForTimeInterval:5];
-        }        
-        if (i == 10) {
-            //线程退出，死亡状态
-            [NSThread exit];
-        }
-    }
-}
-```
-
-## 2.4 线程池的原理
-
-<img src="./image/Thread_NSThread_1.png" alt="img" style="zoom:60%;" />
-
-| 参数名          | 代表含义                                                     |
-| --------------- | ------------------------------------------------------------ |
-| corePoolSize    | 线程池的基本大小（核心线程池大小）                           |
-| maximumPoolSize | 线程池的最大大小                                             |
-| keepAliveTime   | 线程池中超过 corePoolSize 数目的空闲线程的最大存活时间       |
-| unit            | keepAliveTime 参数的时间单位                                 |
-| workQueue       | 任务阻塞队列                                                 |
-| threadFactory   | 新建线程的工厂                                               |
-| handler         | 当提交的任务数超过 maximumPoolSize 与 workQueue 之和时，任务会交给 RejectedExecutionHandler 来处理 |
-
-## 2.5 线程的属性
-
-- **线程名称**：
-   设置线程名称可以当线程执行的方法内部出现异常的时候记录异常和当前线程。
-- **线程的优先级**：
-   内核调度算法在决定该运行哪个线程时，会把线程的优先级作为考量因素，较高优先级的线程会比较低优先级的线程有更多的运行机会。较高优先级不保证你的线程具体执行的时间，不保证可以等它执行完再执行较低优先级的线程，只是比较低优先级的线程更有可能被调度器选择执行而已。
-
-```objectivec
-    NSThread *thread = [[NSThread alloc] initWithTarget:self selector:@selector(demo) object:nil];
-    //线程名称
-    thread.name = @"thread1";
-    //线程优先级：范围 0.0-1.0，默认 0.5
-    thread.threadPriority = 1.0;
-    [thread start];
-```
-
+- NSThread 适用于业务场景不是很复杂的时候，属于比较轻量级的场景，同时由于对NSThread进行了相关拓展，所以开发中调用也极其方便。
+- NSThread 缺点也很明显，不能设置线程之间的依赖关系，需要手动管理睡眠唤醒等。
