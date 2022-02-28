@@ -48,11 +48,25 @@ dispatch_block_t  dispatch_block_create_with_qos_class(dispatch_block_flags_t fl
 
 - 创建出来的 block 提交到队列的时候同时会为block 赋值一个默认的优先级属性，但也有例外，这三个标识位就不会默认设置优先级，分别是 DISPATCH_BLOCK_ASSIGN_CURRENT、DISPATCH_BLOCK_NO_QOS_CLASS和DISPATCH_BLOCK_DETACHED。
 - 当 block 放入并行同步队列，默认是 DISPATCH_BLOCK_ENFORCE_QOS_CLASS 
-
 - 当 block 放入并行异步队列，默认是 DISPATCH_BLOCK_INHERIT_QOS_CLASS
 - 如果一个被赋值了优先级属性的block对象被放入到一个串行队列，那么系统将会尽可能的让已经在前面的block对象与这个block对象拥有一个优先级或者更高优先级，以让前面的block任务优先执行。
 
-## 2. dispatch_block_notify函数
+## 2. dispatch_block_perform
+
+​    直接执行block，使用这个函数，对block设置优先级是无效的。当然也直接比如block()这样执行block，效果是一样的：
+
+   🌰代码：
+
+   ```objective-c
+   dispatch_block_perform(DISPATCH_BLOCK_DETACHED, block1);
+   block2();
+   ```
+
+
+
+## 3. dispatch_block_notify函数
+
+​    这个函数起到通知的作用，也就是当这个函数监听的任务完成后，会执行dispatch_block_notify函数自己的任务。
 
 作用：**在被观察块 block1 执行完毕之后，立即将通知块 block2 提交到指定队列。**
 
@@ -67,7 +81,7 @@ void dispatch_block_notify(dispatch_block_t block, dispatch_queue_t queue, dispa
 
 举个🌰：
 
-```
+```objective-c
 /// block1执行完后将block2加入队列
 - (void)testBlock_notify {
     dispatch_queue_t queue = dispatch_queue_create("queue", DISPATCH_QUEUE_SERIAL);

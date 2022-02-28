@@ -265,3 +265,40 @@ ps：虽然 NSOperation 支持 cancel，但在调用 `cancel` 方法后该如何
 - queuePriority:
   用于设置 operation 在 operation queue 中的相对优化级，同一 queue 中优化级高的 operation(`isReady` 为 YES) 会被优先执行。需要注意区分`qualityOfService`(在系统层面，operation 与其他线程获取资源的优先级)与`queuePriority`(同一 queue 中 operation 间执行的优化级)的区别。
   同时，需要注意`dependencies`(严格控制执行顺序)与`queuePriority`(queue 内部相对优先级)的区别。
+
+# 5. **NSOperationQueue**
+
+### NSOperationQueue有两种队列：主队列、其他队列：
+
+- [NSOperationQueue mainQueue]（主队列）：凡是添加到主队列中的任务都会放到主线程中执行。
+- [[NSOperationQueue alloc] init]（其他队列，非主队列）：加入到'非主队列'中的任务默认就是并发，开启多线程，并将任务自动放到子线程中执行
+
+### **NSOperationQueue** 常用属性和方法：
+
+- 取消/暂停/恢复操作
+
+- - \- (void)cancelAllOperations：取消队列的所有操作，
+  - \- (BOOL)isSuspended：判断队列是否处于暂停状态。 YES 为暂停状态，NO 为恢复状态。
+  - \- (void)setSuspended:(BOOL)b：可设置操作的暂停和恢复，YES 代表暂停队列，NO 代表恢复队列。
+
+- 操作同步
+
+- - \- (void)waitUntilAllOperationsAreFinished：阻塞当前线程，直到队列中的操作全部执行完毕。
+
+- 添加/获取操作
+
+- - \- (void)addOperationWithBlock:(void (^)(void))block：向队列中添加一个 NSBlockOperation 类型操作对象。
+  - \- (void)addOperations:(NSArray *)ops waitUntilFinished:(BOOL)wait：向队列中添加操作数组，wait 标志是否阻塞当前线程直到所有操作结束
+
+- - \- (void)addBarrierBlock:(void (^)(void))barrier：类似CGD 的 dispatch_barrier_async 方法，通过 BarrierBlock 任务 隔离它之前的前序任务，与之后的后续任务。保证执行顺序是：所有前序任务 —> BarrierBlock 任务 —> 后续任务
+
+- - \- (NSArray *)operations; （**API_DEPRECATED**）当前在队列中的操作数组（某个操作执行结束后会自动从这个数组清除）。
+  - \- (NSUInteger)operationCount; （**API_DEPRECATED_WITH_REPLACEMENT("progress.completedUnitCount"**））当前队列中的操作数。
+
+-  @property NSInteger maxConcurrentOperationCount：最大并发操作数，用来控制一个特定队列中可以有多少个操作同时参与并发执行。
+
+​    注意：这里maxConcurrentOperationCount控制的不是并发线程的数量，而是一个队列中同时能并发执行的最大操作数。而且一个操作也并非只能在一个线程中运行。
+
+- - maxConcurrentOperationCount：默认情况下为-1，表示不进行限制，可进行并发执行
+  - maxConcurrentOperationCount 为1时，队列为串行队列。只能串行执行。
+  - maxConcurrentOperationCount 大于1时，队列为并发队列。操作并发执行，当然这个值不应超过系统限制，即使自己设置一个很大的值，系统也会自动调整为设定的默认最大值
