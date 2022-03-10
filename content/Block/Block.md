@@ -55,7 +55,7 @@ struct __block_impl {
 };
 ```
 
-<img src="../images/block_main_cpp.png" alt="main_cpp" style="zoom:100%;" />
+<img src="../images/block_main_cpp.png" alt="main_cpp" style="zoom:150%;" />
 
 >  **_Block_object_assign 方法分析**
 >
@@ -247,10 +247,6 @@ block的三层拷贝是指以下三层：
 
 * 全局block: (在block内部不使用外部变量 or **只使用**全局变量或者静态变量)
 
-
-
-
-
 # 3. block内循环引用解决方案
 
 *  方案一：借助weak
@@ -311,3 +307,4 @@ block的三层拷贝是指以下三层：
   ```
 
   
+
