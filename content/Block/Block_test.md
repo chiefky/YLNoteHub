@@ -34,3 +34,22 @@
 
 答：stack block作为函数参数时，系统无法判断是否需要进行copy，此时不会主动进行copy操作；
 
+## block的参数与返回值用途
+
+```objective-c
+typedef ActionHandler: BOOL(^)()
+```
+
+## 3. block的原理是怎样的？本质是什么？
+
+## 4.`__block`的作用是什么？有什么使用注意点？
+
+## 5.block的属性修饰词为什么是copy？使用block有哪些使用注意？
+
+## 6.block一旦没有进行copy操作，就不会在堆上
+
+## 7.block在修改NSMutableArray，需不需要添加__block？
+
+
+
+\

@@ -421,8 +421,6 @@ CF_PRIVATE void __CFFinalizeRunLoop(uintptr_t data) {
 
 
 
-## 
-
 # 4. RunLoop的正确使用
 
 ## 4.1 如何正确调用接口来启动runloop

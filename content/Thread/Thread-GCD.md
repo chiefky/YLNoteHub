@@ -165,7 +165,7 @@ dispatch_queue_t c_queue = dispatch_queue_create("queue.yuli.concurrent", DISPAT
 > ​	   例如：将多个串行queue指定到目标串行queue, 以实现某任务在多个串行 queue 也是先后执行 而非并行
 >
 > ```objective-c
->     dispatch_queue_t targetQueue = dispatch_queue_create("test.target.queue", DISPATCH_QUEUE_SERIAL);  
+> dispatch_queue_t targetQueue = dispatch_queue_create("test.target.queue", DISPATCH_QUEUE_SERIAL);  
 > dispatch_queue_t queue1 = dispatch_queue_create("test.1", DISPATCH_QUEUE_SERIAL);  
 > dispatch_queue_t queue2 = dispatch_queue_create("test.2", DISPATCH_QUEUE_SERIAL);  
 > 

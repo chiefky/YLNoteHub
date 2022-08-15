@@ -1,4 +1,4 @@
-# Block的三种类型
+# 1.Block的三种类型
 
 ### 三种类型特点：
 
@@ -9,22 +9,47 @@
   * 在block内部不使用外部变量 or **只使用**全局变量或者静态变量
 * 堆区block
   * 位于堆区
-  * 前提：在block内部可以使用外部变量或OC属性，并且将block赋值给strong或copy修饰的变量
+  * 前提：在block内部使用了外部变量或OC属性，并且将block赋值给strong或copy修饰的变量
 * 栈区block
   * 位于栈区
-  * 前提：在block内部可以使用外部变量或OC属性，并且不对block赋值或者只能赋值给weak修饰的变量
+  * 前提：在block内部使用了外部变量或OC属性，并且不对block赋值或者只能赋值给weak修饰的变量
 
 举例说明：
 
-<img src="../images/block_声明.png" alt="声明" style="zoom:80%;" />
+<img src="./images/block_声明.png" alt="声明" style="zoom:80%;" />
 
-<img src="../images/block_类型_global.png" alt="全局区block" style="zoom:80%;" />
+<img src="./images/block_类型_global.png" alt="全局区block" style="zoom:80%;" />
 
-<img src="../images/block_类型_malloc_statck.png" alt="堆区和栈区" style="zoom:80%;" />
+<img src="./images/block_类型_malloc_statck.png" alt="堆区和栈区" style="zoom:80%;" />
 
 
 
 #2. block原理探索
+
+##  block底层结构
+
+```cpp
+struct __main_block_impl_0 {
+  struct __block_impl impl;
+  struct __main_block_desc_0* Desc;
+  NSObject *__strong obj;
+  __main_block_impl_0(void *fp, struct __main_block_desc_0 *desc, NSObject *__strong _obj, int flags=0) : obj(_obj) {
+    impl.isa = &_NSConcreteStackBlock;
+    impl.Flags = flags;
+    impl.FuncPtr = fp;
+    Desc = desc;
+  }
+};
+
+```
+
+使用clang命令查看汇编代码：
+
+`xcrun -sdk iphonesimulator clang -S -rewrite-objc -fobjc-arc -fobjc-runtime=ios-14.4 main.m` 得到"main.cpp",然后`open main.cpp`打开".cpp"文件
+
+<img src="./images/block_main_x.png" style="zoom:100%;" />
+
+
 
 ## 2.1 block的本质
 
@@ -55,7 +80,7 @@ struct __block_impl {
 };
 ```
 
-<img src="../images/block_main_cpp.png" alt="main_cpp" style="zoom:150%;" />
+<img src="./images/block_main_cpp.png" alt="main_cpp" style="zoom:150%;" />
 
 >  **_Block_object_assign 方法分析**
 >
@@ -147,7 +172,7 @@ struct __block_impl {
   };
   ```
 
-<img src="../images/block_main_cpp__block.png" alt="main_cpp" style="zoom:100%;" />
+<img src="./images/block_main_cpp__block.png" alt="main_cpp" style="zoom:100%;" />
 
 ### 2.2.1 捕获非`__block`修饰的变量
 
@@ -189,13 +214,13 @@ struct __block_impl {
 
 #### `__block变量`与__forwarding
 
-<img src="../images/block_forwarding.png" alt="__forwording" style="zoom:80%;" />
+<img src="./images/block_forwarding.png" alt="__forwording" style="zoom:80%;" />
 
 通过__forwarding, 无论是在block中还是 block外访问__block变量, 也不管该变量在栈上或堆上, 都能顺利地访问同一个__block变量。
 
 ### 2.2.3 block的三层copy总结
 
-<img src="../images/block_copy_three.png" alt="__forwording" style="zoom:80%;" />
+<img src="./images/block_copy_three.png" alt="__forwording" style="zoom:80%;" />
 
 block的三层拷贝是指以下三层：
 

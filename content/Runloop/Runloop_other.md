@@ -194,14 +194,14 @@
 
 - **- (id)performSelector:(SEL)aSelector withObject:(id)object1 withObject:(id)object2;**
 
-- - 内部实现是调用了 objc_msgSend 方法
+  >  内部实现是调用了 objc_msgSend 方法
 
 #### 延迟方法
 
 - **- (void)performSelector:(SEL)aSelector withObject:(nullable id)anArgument afterDelay:(NSTimeInterval)delay;**
 
-- - 当调用 NSObject 的 performSelecter:afterDelay: 后，实际上其内部会创建一个 Timer 并添加到当前线程的 RunLoop 中。所以如果当前线程没有 RunLoop，则这个方法会失效。
-  - 该方法会持有调用 **perform** 的对象，直到**selector** 调用结束 或者 直接停止指定线程的 **runloop**
+  > - 当调用 NSObject 的 performSelecter:afterDelay: 后，实际上其内部会创建一个 Timer 并添加到当前线程的 RunLoop 中。所以如果当前线程没有 RunLoop，则这个方法会失效。
+  > - 该方法会持有调用 **perform** 的对象，直到**selector** 调用结束 或者 直接停止指定线程的 **runloop**
 
 #### 取消延迟
 
@@ -209,7 +209,7 @@
 
 - **+ (void)cancelPreviousPerformRequestsWithTarget:(id)aTarget;**
 
-- - 调用此方法取消一个延迟任务时，需要与 **performSelector** 调用所在相同的线程执行
+  > 调用此方法取消一个延迟任务时，需要与 **performSelector** 调用所在相同的线程执行
 
 #### 线程+模式方法
 
@@ -223,13 +223,12 @@
 
 - **\- (void)performSelectorInBackground:(SEL)aSelector withObject:(nullable id)arg API_AVAILABLE(macos(10.5), ios(2.0), watchos(2.0), tvos(9.0));**
 
-- 调用该方法分为几种情况：
-
-- - 1. <font color='red'> 当指定的线程 与当前线程相同，且（阻塞当前线程 或 runloop 不存在）时，内部实现与 objc_msgSend 相同</font>
-
-  - 2. <font color='red'>当指定的线程 与当前线程相同，且阻塞当前线程，且 runloop 存在时，内部实现通过 source0</font>
-    3. <font color='red'>当指定的线程 非当前线程，且不需要阻塞的话，内部实现通过 source0</font>
-    4. <font color='red'>当指定的线程 非当前线程，且需要阻塞的话，会通过 source0 同时 生成一个NSConditionLock 锁阻塞住当前线程</font>
+  > 调用该方法分为几种情况：
+  >
+  > 1. <font color='red'> 当指定的线程 与当前线程相同，且（阻塞当前线程 或 runloop 不存在）时，内部实现与 objc_msgSend 相同</font>
+  > 2. <font color='red'>当指定的线程 与当前线程相同，且阻塞当前线程，且 runloop 存在时，内部实现通过 source0</font>
+  > 3. <font color='red'>当指定的线程 非当前线程，且不需要阻塞的话，内部实现通过 source0</font>
+  > 4. <font color='red'>当指定的线程 非当前线程，且需要阻塞的话，会通过 source0 同时 生成一个NSConditionLock 锁阻塞住当前线程</font>
 
 ## 5.2 问题Q&A
 

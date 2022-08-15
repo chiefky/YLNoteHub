@@ -6,9 +6,11 @@
 
   两者关系如图：
 
-  <img src="../images/内存管理_weak实现_SideTables结构.png" alt="img" style="zoom:80%;" />
+  <img src="./image/Memory_weak_SideTables.png" alt="img" style="zoom:80%;" />
 
-<img src="../images/内存管理_weak实现_weakTable结构.png" alt="weak_table" style="zoom:80%;" />
+
+
+<img src="./image/Memory_weak__weak_table.png" alt="weak_table" style="zoom:80%;" />
 
 **总结：**
 

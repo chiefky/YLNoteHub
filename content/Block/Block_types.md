@@ -9,18 +9,18 @@
   * 在block内部不使用外部变量 or **只使用**全局变量或者静态变量
 * 堆区block
   * 位于堆区
-  * 前提：在block内部可以使用外部变量或OC属性，并且将block赋值给strong或copy修饰的变量
+  * 前提：在block内部使用了外部变量或OC属性，并且将block赋值给strong或copy修饰的变量
 * 栈区block
   * 位于栈区
-  * 前提：在block内部可以使用外部变量或OC属性，并且不对block赋值或者只能赋值给weak修饰的变量
+  * 前提：在block内部使用了外部变量或OC属性，并且不对block赋值或者只能赋值给weak修饰的变量
 
 举例说明：
 
-<img src="/Users/tangh/yuki/博客/文章仓库/YLNoteHub/content/images/block_声明.png" alt="声明" style="zoom:80%;" />
+<img src="./images/block_声明.png" alt="声明" style="zoom:80%;" />
 
-<img src="/Users/tangh/yuki/博客/文章仓库/YLNoteHub/content/images/block_类型_global.png" alt="全局区block" style="zoom:80%;" />
+<img src="./images/block_类型_global.png" alt="全局区block" style="zoom:80%;" />
 
-<img src="/Users/tangh/yuki/博客/文章仓库/YLNoteHub/content/images/block_类型_malloc_statck.png" alt="堆区和栈区" style="zoom:80%;" />
+<img src="./images/block_类型_malloc_statck.png" alt="堆区和栈区" style="zoom:80%;" />
 
 
 
