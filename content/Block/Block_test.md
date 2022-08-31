@@ -34,11 +34,13 @@
 
 答：stack block作为函数参数时，系统无法判断是否需要进行copy，此时不会主动进行copy操作；
 
-## block的参数与返回值用途
+## 3. block的参数与返回值用途
 
 ```objective-c
 typedef ActionHandler: BOOL(^)()
 ```
+
+A-->B
 
 ## 3. block的原理是怎样的？本质是什么？
 

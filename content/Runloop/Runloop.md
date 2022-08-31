@@ -164,7 +164,7 @@ struct __CFRunLoopMode {
 
 当其加入到 RunLoop 时，RunLoop会注册对应的时间点，当时间点到时，RunLoop会被唤醒以执行那个回调。
 
-### CFRunLoopObserverRef**
+### CFRunLoopObserverRef
 
 是观察者，每个 Observer 都包含了一个回调（函数指针），当 RunLoop 的状态发生变化时，观察者就能通过回调接受到这个变化。
 
@@ -634,7 +634,21 @@ Source0 解读：
 
 <font color='red'>重点结论：当前时刻未超过多个 timerInterval 时，timer 触发只会延迟执行，不会丢失。若超过多个 timerInterval 时，只会执行 最早应该触发的那次 timer，它之后的 与 当前时刻之间的其他 触发时机 都会舍弃掉</font>
 
-#### TODO： NSTimer实现原理 
+#### NSTimer实现原理 
+
+> 1. 对于重复的NSTimer，其多次触发的时刻不是一开始算好的，而是timer触发后计算的。但是计算时参考的是上次应当触发的时间_fireTSR，因此计算出的下次触发的时刻不会有误差。_
+> 2. 设置了tolerance的NSTimer，对于iOS和MacOS系统，实质上会采用GCD timer的形式注册到内核中，GCD timer触发后，再由RunLoop处理其回调逻辑。对于没有设置tolerance的timer，则是用mk_timer的形式注册。
+> 3. RunLoopMode中timer的排序是按照_fireTSR，也就是应当触发的时间排序的。而且，出于对于保证timer严格有序的考虑，保证时间考前的tolerance较大的timer不会影响后面的timer，系统在给GCD timer 传dummy字段时候会保证_fireTSR+dummy小于后面timer的最晚触发时间。
+> 4. RunLoop层在timer触发后进行回调的时候，不会对tolerance进行验证。也就是说，因为RunLoop忙导致的timer触发时刻超出了tolerance的情况下，timer并不会取消，而不执行回调。
+> 5. 对于RunLoop忙时很长（或者timeInteval很短）的情况，会导致本该在这段时间内触发的几次回调中，只触发一次，也就是说，这种情况下还是会损失回调的次数。
+> 6. 对于RunLoop比较忙的情况，timer的回调时刻有可能不准，且不会受到tolerance的任何限制。tolerance的作用不是决定timer是否触发的标准，而是一个传递给系统的数值，帮助系统合理的规划GCD Timer的mach-port触发时机。设置了tolerance，一定会损失一定的时间精确度，但是可以显著的降低耗电。
+>
+> > 一些延伸：
+> >
+> > 1. 用NSTimer去计次可不可信？不太可信。对于timeInteval长的时候基本可信，但是，在timeInteval很短的时候，是有可能导致RunLoop忙时超过1～2个timeInteval，从而丢失某次回调。
+> > 2. 用NSTimer获取的时间间隔准不准？不准，如果想获取可靠时间，请配合CFAbsoluteTimeGetCurrent()使用
+>
+> 摘自：https://toutiao.io/posts/4330zh/preview
 
 
 

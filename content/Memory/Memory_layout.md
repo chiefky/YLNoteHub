@@ -2,7 +2,9 @@
 
 共享库（libobjc.A.dylib等）与内核空间的内存布局在栈区之上;如下图：
 
-<img src="/Users/tangh/yuki/iOS练习Demos/YLNote/YLNote/latest/个人笔记/文章/images/内存布局_0.jpg" alt="内存分布" style="zoom:100%;" />
+<img src="./image/Memory_layout-0.jpg" alt="内存分布" style="zoom:100%;" />
+
+
 
 - **内核区**：用于加载内核代码，预留1GB
 
@@ -24,7 +26,7 @@
 
   如何查看对象地址：
 
-  <img src="/Users/tangh/yuki/iOS练习Demos/YLNote/YLNote/latest/个人笔记/文章/images/内存布局_1.jpg" alt="内存分布-1" style="zoom:80%;" />
+  <img src="./image/Memory_layout-1.jpg" alt="内存分布-1" style="zoom:80%;" />
 
 
 
@@ -55,9 +57,9 @@
 
 答案看源码：
 
-<img src="/Users/tangh/yuki/iOS练习Demos/YLNote/YLNote/latest/个人笔记/文章/images/内存管理_retaincount_alloc2.png" alt="retaincount" style="zoom:80%;" />
+<img src="./image/Memory_manage-retaincount_alloc2.png" alt="retaincount" style="zoom:80%;" />
 
-<img src="/Users/tangh/yuki/iOS练习Demos/YLNote/YLNote/latest/个人笔记/文章/images/内存管理_retaincount_alloc1.png" alt="retaincount" style="zoom:80%;" />
+<img src="./image/Memory_manage-retaincount_alloc1.png" alt="retaincount" style="zoom:80%;" />
 
 # 4. Autoreleasepool
 
@@ -281,13 +283,13 @@ objc_autoreleasePoolPop(void *ctxt)
 
 ### AutoreleasepoolPage在内存中以双向链表形式存在，如图：
 
-![双向链表](/Users/tangh/yuki/iOS练习Demos/YLNote/YLNote/latest/个人笔记/文章/images/内存管理-AutoreleasePoolPage_0.png)
+![双向链表](./image/Memory_manage-AutoreleasePoolPage_0.png)
 
 ### 单个page的内存形态
 
 
 
-<img src="/Users/tangh/yuki/iOS练习Demos/YLNote/YLNote/latest/个人笔记/文章/images/内存管理-autoreleasepage_1.png" alt="AutoreleasepoolPage" style="zoom:80%;" />
+<img src="./image/Memory_manage-autoreleasepage_1.png" alt="AutoreleasepoolPage" style="zoom:80%;" />
 
 `next` 指向了下一个为空的内存地址，如果 `next` 指向的地址加入一个 `object`，它就会如下图所示**移动到下一个为空的内存地址中**：
 
@@ -553,11 +555,11 @@ id *add(id obj)
 
 ### 5.2.2 AutoreleasePoolPage::pop()
 
-<img src="/Users/tangh/yuki/iOS练习Demos/YLNote/YLNote/latest/个人笔记/文章/images/内存管理-autoreleasepage_pop_0.png" alt="pop-0" style="zoom:80%;" />
+<img src="./image/Memory_manage-autoreleasepage_pop_0.png" alt="pop-0" style="zoom:80%;" />
 
-<img src="/Users/tangh/yuki/iOS练习Demos/YLNote/YLNote/latest/个人笔记/文章/images/内存管理-autoreleasepage_pop_1.png" alt="pop-1" style="zoom:80%;" />
+<img src="./image/Memory_manage-autoreleasepage_pop_1.png" alt="pop-1" style="zoom:80%;" />
 
-<img src="/Users/tangh/yuki/iOS练习Demos/YLNote/YLNote/latest/个人笔记/文章/images/内存管理-autoreleasepage_pop_2.png" alt="pop-2" style="zoom:80%;" />
+<img src="./image/Memory_manage-autoreleasepage_pop_2.png" alt="pop-2" style="zoom:80%;" />
 
 ##### 其中核心三步：
 
@@ -710,7 +712,7 @@ id *add(id obj)
 
 打印结果：
 
-<img src="/Users/tangh/yuki/iOS练习Demos/YLNote/YLNote/latest/个人笔记/文章/images/内存管理-autoreleasepool_嵌套.png" alt="pool嵌套" style="zoom:80%;" />
+<img src="./image/Memory_manage-autoreleasepool_嵌套.png" alt="pool嵌套" style="zoom:80%;" />
 
 其内部对象释放过程：
 
@@ -727,15 +729,15 @@ id *add(id obj)
 
 # 7. +animal1、+animal2初始化的对象会自动加入autoreleasepool吗？
 
-<img src="/Users/tangh/yuki/iOS练习Demos/YLNote/YLNote/latest/个人笔记/文章/images/内存管理-autorelease_汇编code.png" alt="是否自动加入pool" style="zoom:100%;" />
+<img src="./image/Memory_manage-autorelease_汇编code.png" alt="是否自动加入pool" style="zoom:100%;" />
 
-<img src="/Users/tangh/yuki/iOS练习Demos/YLNote/YLNote/latest/个人笔记/文章/images/内存管理-autoreleasepool_code_0.png" alt="是否自动加入pool" style="zoom:100%;" />
+<img src="./image/Memory_manage-autoreleasepool_code_0.png" alt="是否自动加入pool" style="zoom:100%;" />
 
-<img src="/Users/tangh/yuki/iOS练习Demos/YLNote/YLNote/latest/个人笔记/文章/images/内存管理-autoreleasepool_code_1.png" alt="是否自动加入pool" style="zoom:100%;" />
+<img src="./image/Memory_manage-autoreleasepool_code_1.png" alt="是否自动加入pool" style="zoom:100%;" />
 
-<img src="/Users/tangh/yuki/iOS练习Demos/YLNote/YLNote/latest/个人笔记/文章/images/内存管理-autoreleasepool_code_2.png" alt="是否自动加入pool" style="zoom:100%;" />
+<img src="./image/Memory_manage-autoreleasepool_code_2.png" alt="是否自动加入pool" style="zoom:100%;" />
 
-<img src="/Users/tangh/yuki/iOS练习Demos/YLNote/YLNote/latest/个人笔记/文章/images/内存管理-autoreleasepool_code_3.png" alt="是否自动加入pool" style="zoom:100%;" />
+<img src="./image/Memory_manage-autoreleasepool_code_3.png" alt="是否自动加入pool" style="zoom:100%;" />
 
 答：
 

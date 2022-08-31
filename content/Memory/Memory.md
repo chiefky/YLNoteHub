@@ -68,9 +68,9 @@
 >
 > **Tagged Pointer内存结构**
 >
-> <img src="../images/内存管理_taggedPointer_64.jpg" alt="TaggedPointerbit分布图" style="zoom:50%;" />
+> <img src="./image/Memory_manage-taggedPointer_64.jpg" alt="TaggedPointerbit分布图" style="zoom:50%;" />
 >
-> <img src="../images/内存管理_taggedPointer_64_2.jpg" alt="TaggedPointerbit分布图" style="zoom:50%;" />
+> <img src="./image/Memory_manage-taggedPointer_64_2.jpg" alt="TaggedPointerbit分布图" style="zoom:50%;" />
 >
 > 与macOS不同，iOS系统采用 `MSB`（`Most Significant Bit`，即最高有效位）为`Tagged Pointer`标志位。
 >
@@ -80,7 +80,7 @@
 >
 > * Extended_Tag_Index：占8bit，只有当Tag_Index=7的时候才存在，表示这是一个用于扩展的标志位，会额外占用8位来存储扩展的Tag Index。类标识的基本类型和扩展类型我们可以在`Runtime`源码中的`objc_tag_index_t`查到：
 >
->   <img src="/Users/tangh/Library/Application Support/typora-user-images/image-20210806165118167.png" style="zoom:30%;" />
+>   <img src="./image/image-20210806165118167.png" style="zoom:30%;" />
 >
 > * Tag_Index：占3bit，是类标志位，可以在`Runtime`源码中查看`NSNumber`、`NSDate`、`NSString`等类的标志位。
 >
@@ -157,7 +157,6 @@
 > > - **spinlock_t slock**：自旋锁，用于上锁/解锁 SideTable。
 > > - **RefcountMap refcnts**：用来存储OC对象的引用计数的 `hash表`(仅在未开启isa优化或在isa优化情况下isa_t的引用计数溢出时才会用到，<font color="red">**未溢出时是放在isa_t下的extra_rc字段中**</font>)。
 > > - **weak_table_t weak_table**：存储对象弱引用指针的hash表。是OC中weak功能实现的核心数据结构。
-
 
 
 

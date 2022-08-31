@@ -6,11 +6,11 @@
 
   两者关系如图：
 
-  <img src="./image/Memory_weak_SideTables.png" alt="img" style="zoom:80%;" />
+  <img src="./image/Memory-weak_SideTables.png" alt="img" style="zoom:80%;" />
 
 
 
-<img src="./image/Memory_weak__weak_table.png" alt="weak_table" style="zoom:80%;" />
+<img src="./image/Memory-weak__weak_table.png" alt="weak_table" style="zoom:80%;" />
 
 **总结：**
 

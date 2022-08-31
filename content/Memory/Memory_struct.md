@@ -100,7 +100,7 @@ meta-class对象在内存中存储的信息主要包括：
 
 ## 2.4 经典图isa& super走向
 
-<img src="../images/内存布局_OC类与对象_isa_super.jpg" alt="isa_super" style="zoom:60%;" />
+<img src="./image/Memory_layout-OC类与对象_isa_super.jpg" alt="isa_super" style="zoom:60%;" />
 
 ## 2.5 总结：
 
@@ -128,7 +128,7 @@ meta-class对象在内存中存储的信息主要包括：
 
 2. 用 **ISA** 与 **ISA_MASK** 做“与”操作，获取类信息： po 0x000000010bb22280 & 0x007ffffffffffff8ULL（**TARGET_OS_SIMULATOR** 下的 **ISA_MASK**）
 
-<img src="../images/内存布局_OC类与对象_isa.jpg" alt="内存地址" style="zoom:80%;" />
+<img src="./image/Memory_layout-OC类与对象_isa.jpg" alt="内存地址" style="zoom:80%;" />
 
 # 3. 类的结构分析
 
@@ -299,11 +299,11 @@ objc_object::initIsa(Class cls, bool nonpointer, UNUSED_WITHOUT_INDEXED_ISA_AND_
 
 通过bits初始化前后对比：
 
-<img src="/Users/tangh/yuki/iOS练习Demos/YLNote/YLNote/latest/个人笔记/文章/images/内存管理_isa_验证位域.jpg" alt="isa验证bits位域" style="zoom:80%;" />
+<img src="./image/Memory_manage-isa_验证位域.jpg" alt="isa验证bits位域" style="zoom:80%;" />
 
 其中`magic`是`59`是由于将`isa`指针地址转换为`二进制`，从`47`（因为前面有4个位域，共占用47位，地址是从0开始）位开始读取`6`位，再转换为`十进制`，如下图所示
 
-<img src="../images/内存管理_isa_验证位域_0.jpg" alt="isa验证bits位域" style="zoom:80%;" />
+<img src="./image/Memory_manage-isa_验证位域_0.jpg" alt="isa验证bits位域" style="zoom:80%;" />
 
 ### 3.2.5 isa 与 类 的关联
 
@@ -468,9 +468,9 @@ ivarLayout 和 weakIvarLayout 分别记录了哪些 ivar 是 strong 或是 weak�
 
 ## 4.1 对象的本质
 
-<img src="../images/内存布局_OC类与对象_对象的本质_0.png" alt="YLPet编译前" style="zoom:50%;" />
+<img src="./image/Memory_layout-OC类与对象_对象的本质_0.png" alt="YLPet编译前" style="zoom:50%;" />
 
-<img src="../images/内存布局_OC类与对象_对象的本质_1.png" alt="YLPet编译后" style="zoom:50%;" />
+<img src="./image/Memory_layout-OC类与对象_对象的本质_1.png" alt="YLPet编译后" style="zoom:50%;" />
 
 结合源码分析：
 
@@ -518,9 +518,9 @@ private:
 
 ### 4.2.2 内存结构
 
-<img src="../images/内存管理_taggedPointer_64.jpg" alt="TaggedPointerbit分布图" style="zoom:50%;" />
+<img src="./image/Memory_manage-taggedPointer_64.jpg" alt="TaggedPointerbit分布图" style="zoom:50%;" />
 
-<img src="../images/内存管理_taggedPointer_64_2.jpg" alt="TaggedPointerbit分布图" style="zoom:50%;" />
+<img src="./image/Memory_manage-taggedPointer_64_2.jpg" alt="TaggedPointerbit分布图" style="zoom:50%;" />
 
 注意：与macOS不同，iOS系统采用 `MSB`（`Most Significant Bit`，即最高有效位）为`Tagged Pointer`标志位。
 
@@ -841,7 +841,7 @@ _class_createInstanceFromZone(Class cls, size_t extraBytes, void *zone,
 >
 >     ```objective-c
 >     @interface YLAnimal : NSObject
->           
+>               
 >     + (id)newTestObject;  // 返回一个自动关联为YLAnimal类型的对象
 >     + (id)allocTestObject;// 返回一个自动关联为YLAnimal类型的对象
 >     + (id)testObject;// 返回一个类型不明的对象
@@ -856,8 +856,8 @@ _class_createInstanceFromZone(Class cls, size_t extraBytes, void *zone,
 
 # TODO : 关于NSProxy与NSObject
 
-<img src="../images/内存布局_OC类与对象_NSObject.jpg" alt="NSobject" style="zoom:80%;" />
+<img src="./image/Memory_layout-OC类与对象_NSObject.jpg" alt="NSobject" style="zoom:80%;" />
 
-<img src="../images/内存布局_OC类与对象_NSProxy.jpg" style="zoom:80%;" />
+<img src="./image/Memory_layout-OC类与对象_NSProxy.jpg" style="zoom:80%;" />
 
 ### 
