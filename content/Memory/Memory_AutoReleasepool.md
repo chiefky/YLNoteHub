@@ -1,73 +1,10 @@
-# 1. 内存布局（内存分区）
+# 1. AutoReleasepool
 
-共享库（libobjc.A.dylib等）与内核空间的内存布局在栈区之上;如下图：
-
-<img src="./image/Memory_layout-0.jpg" alt="内存分布" style="zoom:100%;" />
-
-
-
-- **内核区**：用于加载内核代码，预留1GB
-
-- **共享区：用于加载系统库，例如:libobjc.a.dylib**
-
-- **栈区**：创建临时变量时由编译器自动分配，在不需要的时候自动清除的变量的存储区。里面的变量通常是局部变量、函数参数等。在一个进程中，位于用户虚拟地址空间顶部的是用户栈，编译器用它来实现函数的调用。和堆一样，用户栈在程序执行期间可以动态地扩展和收缩。栈区的内存地址一般是0x7开头,从高地址到底地址分配内存空间（**<font color=red>TaggedPointer</font>**）
-
-- **堆区**：那些由 new alloc 创建的对象所分配的内存块，它们的释放系统不会主动去管，由我们的开发者去告诉系统什么时候释放这块内存(一个对象引用计数为0是系统就会回销毁该内存区域对象)。一般一个 new 就要对应一个release。在ARC下编译器会自动在合适位置为OC对象添加release操作。会在当前线程Runloop退出或休眠时销毁这些对象，MRC则需程序员手动释放。堆可以动态地扩展和收缩。堆区的内存地址一般是0x6开头,从底地址到高地址分配内存空间
-
-- **未初始化数据（静态区）**：BSS段又称静态区，未初始化的全局变量，静态变量存放在这里。一旦初始化就会被回收，并且将数据转存到数据段中。
-
-- **已初始化数据（常量区）**：数据段又称常量区，专门存放常量，直到程序结束的时候才会被回收
-
-- **代码段**：用于存放程序运行时的代码，代码会被编译成二进制存进内存的程序代码区。程序结束时系统会自动回收存储在代码段中的数据。
-
-- **保留区**：内存有4MB保留，地址从低到高递增
-
-  
-
-  如何查看对象地址：
-
-  <img src="./image/Memory_layout-1.jpg" alt="内存分布-1" style="zoom:80%;" />
-
-
-
-# 2. 内存管理方案
-
-* 堆区：由开发者（借助<font color="red">引用计数</font>）管理的，需要告诉系统什么时候释放内存。
-
-  ARC下：编译器会自动在合适的时候插入引用计数管理代码（`retain`、`release`、`autorelease`）；
-
-  MRC下：需要开发者手动释放。
-
-* 栈区、其他区：编译器自动分配，由系统管理，在不需要的时候自动清除；
-
-
-
-# 3. 引用计数原理
-
-引用计数是一种内存管理技术，是指将资源（可以是对象、内存或磁盘空间等等）的**被引用次数**保存起来，当被引用次数**变为零**时就将其**释放**的过程。使用引用计数技术可以实现自动资源管理的目的。同时引用计数还可以指使用引用计数技术回收未使用资源的垃圾回收算法。
-
-## 3.1 引用计数规则
-
-1. 自己生成的对象，自己持有。（alloc,new,copy,mutableCopy等）
-2. 非自己生成的对象，自己也能持有。（retain 等）
-3. 不再需要自己持有的对象时释放。（release，dealloc 等）
-4. 非自己持有的对象无法释放。
-
-## 3.2 alloc引起引用计数+1 的原因
-
-答案看源码：
-
-<img src="./image/Memory_manage-retaincount_alloc2.png" alt="retaincount" style="zoom:80%;" />
-
-<img src="./image/Memory_manage-retaincount_alloc1.png" alt="retaincount" style="zoom:80%;" />
-
-# 4. Autoreleasepool
-
-## 4.1 什么是Autoreleasepool?
+## 1.1 什么是Autoreleasepool?
 
 自动释放池是 `Objective-C` 开发中的一种自动内存回收管理的机制，为了替代开发人员手动管理内存，实质上是使用编译器在适当的位置插入`release`、`autorelease`等内存释放操作。当对象调用 `autorelease `方法后会被放到自动释放池中延迟释放时机，当缓存池需要清除`dealloc`时，会向这些 `Autoreleased `对象做 `release` 释放操作。
 
-## 4.2 对象什么时候释放
+## 1.2 对象什么时候释放
 
 以下A、B两种情况person分别什么时候释放(dealloc触发时机)？
 
@@ -133,7 +70,7 @@ NSLog(@"temp = %@",temp);
 
 
 
-## 4.3 AutoreleasePool的使用
+## 1.3 AutoreleasePool的使用
 
 **初始化or创建**
 
@@ -146,7 +83,7 @@ NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 id object = [[NSObject alloc] init];
 //3.对象调用autorelease方法
 [object autorelease];
-//4.废弃NSAutoreleasePool对象，会对释放池中的object发送release消息
+//1.废弃NSAutoreleasePool对象，会对释放池中的object发送release消息
 [pool drain];
 
 ```
@@ -217,7 +154,7 @@ ARC:
 > * NSObserver center (<font color="red">待补充</font>) 
 > * 
 
-## 4.4  ARC下`@autoreleasepool {} `被编译成了什么
+## 1.4  ARC下`@autoreleasepool {} `被编译成了什么
 
 使用clang命令将main.m编译成main.cpp，查看相关代码，如下：
 
@@ -277,9 +214,9 @@ objc_autoreleasePoolPop(void *ctxt)
 
 ```
 
-# 5. AutoreleasepoolPage
+# 2. AutoreleasepoolPage
 
-## 5.1 内存结构
+## 2.1 内存结构
 
 ### AutoreleasepoolPage在内存中以双向链表形式存在，如图：
 
@@ -291,11 +228,13 @@ objc_autoreleasePoolPop(void *ctxt)
 
 <img src="./image/Memory_manage-autoreleasepage_1.png" alt="AutoreleasepoolPage" style="zoom:80%;" />
 
+
+
 `next` 指向了下一个为空的内存地址，如果 `next` 指向的地址加入一个 `object`，它就会如下图所示**移动到下一个为空的内存地址中**：
 
 > 注意：各变量在内存中的位置；
 
-## 5.2  AutoreleasePoolPage部分关键源码
+## 2.2  AutoreleasePoolPage部分关键源码
 
 ```cpp
 class AutoreleasePoolPage : private AutoreleasePoolPageData
@@ -387,7 +326,7 @@ struct AutoreleasePoolPageData
 3. 每一个`AutoreleasePoolPageData`都对应一个pthread_t线程
 4. `AutoreleasePoolPageData`结构体的大小为56字节
 
-### 5.2.1 AutoreleasePoolPage::push()
+### 2.2.1 AutoreleasePoolPage::push()
 
 ```cpp
 static inline void *push() 
@@ -429,12 +368,12 @@ static inline void *push()
 > static __attribute__((noinline))
 > id *autoreleaseNewPage(id obj)
 > {
->     //获取当前hotpage
->     AutoreleasePoolPage *page = hotPage();
->     //判断当前页是否存在，如果存在，则压栈对象
->     if (page) return autoreleaseFullPage(obj, page);
->     //如果不存在，则创建page
->     else return autoreleaseNoPage(obj);
+>  //获取当前hotpage
+>  AutoreleasePoolPage *page = hotPage();
+>  //判断当前页是否存在，如果存在，则压栈对象
+>  if (page) return autoreleaseFullPage(obj, page);
+>  //如果不存在，则创建page
+>  else return autoreleaseNoPage(obj);
 > }
 > 
 > ```
@@ -442,24 +381,23 @@ static inline void *push()
 #### autoreleaseFast()方法--大概率发生事件
 
 > ```cpp
->     static inline id *autoreleaseFast(id obj)
->     {
->         AutoreleasePoolPage *page = hotPage();
->         if (page && !page->full()) {
->             return page->add(obj);
->         } else if (page) {
->             return autoreleaseFullPage(obj, page);
->         } else {
->             return autoreleaseNoPage(obj);
->         }
->     }
+>  static inline id *autoreleaseFast(id obj)
+>  {
+>      AutoreleasePoolPage *page = hotPage();
+>      if (page && !page->full()) {
+>          return page->add(obj);
+>      } else if (page) {
+>          return autoreleaseFullPage(obj, page);
+>      } else {
+>          return autoreleaseNoPage(obj);
+>      }
+>  }
 > 
 > ```
 
 ###### autoreleaseFullPage() 方法
 
 ```cpp
-
 static __attribute__((noinline))
 id *autoreleaseFullPage(id obj, AutoreleasePoolPage *page)
 {
@@ -553,7 +491,7 @@ id *add(id obj)
 
 ```
 
-### 5.2.2 AutoreleasePoolPage::pop()
+### 2.2.2 AutoreleasePoolPage::pop()
 
 <img src="./image/Memory_manage-autoreleasepage_pop_0.png" alt="pop-0" style="zoom:80%;" />
 
@@ -572,15 +510,15 @@ id *add(id obj)
 > ```cpp
 > static AutoreleasePoolPage *pageForPointer(uintptr_t p) 
 > {
->     AutoreleasePoolPage *result;
->     uintptr_t offset = p % SIZE;
+>  AutoreleasePoolPage *result;
+>  uintptr_t offset = p % SIZE;
 > 
->     ASSERT(offset >= sizeof(AutoreleasePoolPage));
+>  ASSERT(offset >= sizeof(AutoreleasePoolPage));
 > 
->     result = (AutoreleasePoolPage *)(p - offset);
->     result->fastcheck();
+>  result = (AutoreleasePoolPage *)(p - offset);
+>  result->fastcheck();
 > 
->     return result;
+>  return result;
 > }
 > ```
 >
@@ -594,70 +532,70 @@ id *add(id obj)
 > ```cpp
 > void releaseUntil(id *stop) 
 > {
->     // Not recursive: we don't want to blow out the stack 
->     // if a thread accumulates a stupendous amount of garbage
->     
->     // 释放AutoreleasePoolPage中的对象，直到next指向stop
->     while (this->next != stop) {
->         // Restart from hotPage() every time, in case -release 
->         // autoreleased more objects
->         // hotPage可以理解为当前正在使用的page
->         AutoreleasePoolPage *page = hotPage();
+>  // Not recursive: we don't want to blow out the stack 
+>  // if a thread accumulates a stupendous amount of garbage
 > 
->         // fixme I think this `while` can be `if`, but I can't prove it
->         while (page->empty()) {
->             page = page->parent;
->             setHotPage(page);
->         }
->    
->         page->unprotect();
->         // obj = page->next; page->next--;
->      id obj = *--page->next;
->         memset((void*)page->next, SCRIBBLE, sizeof(*page->next));
->         page->protect();
->    
->         // POOL_BOUNDARY为nil，是哨兵对象
->         if (obj != POOL_BOUNDARY) {
->          // 释放obj对象
->             objc_release(obj);
->         }
->     }
->    
->     // 重新设置hotPage
->     setHotPage(this);
+>  // 释放AutoreleasePoolPage中的对象，直到next指向stop
+>  while (this->next != stop) {
+>      // Restart from hotPage() every time, in case -release 
+>      // autoreleased more objects
+>      // hotPage可以理解为当前正在使用的page
+>      AutoreleasePoolPage *page = hotPage();
 > 
->    #if DEBUG
->     // we expect any children to be completely empty
->  for (AutoreleasePoolPage *page = child; page; page = page->child) {
->      assert(page->empty());
->     }
->    #endif
->    }
->    ```
+>      // fixme I think this `while` can be `if`, but I can't prove it
+>      while (page->empty()) {
+>          page = page->parent;
+>          setHotPage(page);
+>      }
+> 
+>      page->unprotect();
+>      // obj = page->next; page->next--;
+>   id obj = *--page->next;
+>      memset((void*)page->next, SCRIBBLE, sizeof(*page->next));
+>      page->protect();
+> 
+>      // POOL_BOUNDARY为nil，是哨兵对象
+>      if (obj != POOL_BOUNDARY) {
+>       // 释放obj对象
+>          objc_release(obj);
+>      }
+>  }
+> 
+>  // 重新设置hotPage
+>  setHotPage(this);
+> 
+> #if DEBUG
+>  // we expect any children to be completely empty
+> for (AutoreleasePoolPage *page = child; page; page = page->child) {
+>   assert(page->empty());
+>  }
+> #endif
+> }
+> ```
 
 #### kill()方法 ---- 删除双向链表中的每一个page
 
 > ```cpp
 > void kill() 
 > {
->     // Not recursive: we don't want to blow out the stack 
->     // if a thread accumulates a stupendous amount of garbage
->     AutoreleasePoolPage *page = this;
->     // 找到链表最末尾的page
->     while (page->child) page = page->child;
+>  // Not recursive: we don't want to blow out the stack 
+>  // if a thread accumulates a stupendous amount of garbage
+>  AutoreleasePoolPage *page = this;
+>  // 找到链表最末尾的page
+>  while (page->child) page = page->child;
 > 
->     AutoreleasePoolPage *deathptr;
->     // 循环删除每一个page
->     do {
->         deathptr = page;
->         page = page->parent;
->         if (page) {
->             page->unprotect();
->             page->child = nil;
->             page->protect();
->         }
->         delete deathptr;
->     } while (deathptr != this);
+>  AutoreleasePoolPage *deathptr;
+>  // 循环删除每一个page
+>  do {
+>      deathptr = page;
+>      page = page->parent;
+>      if (page) {
+>          page->unprotect();
+>          page->child = nil;
+>          page->protect();
+>      }
+>      delete deathptr;
+>  } while (deathptr != this);
 > }
 > ```
 
@@ -689,7 +627,7 @@ id *add(id obj)
    * 通过root page拿到hotpage(),从hotPage的next指针开始向boundary之后的所有对象发送release消息
    * 所有对象发完release消息之后，调用kill方法删除空page （memory: delete empty children）；
 
-# 6. AutoreleasePool的嵌套
+# 3. AutoreleasePool的嵌套
 
 查看两个嵌套的AutoreleasePool在内存中的结构：
 
@@ -727,7 +665,7 @@ id *add(id obj)
 
 
 
-# 7. +animal1、+animal2初始化的对象会自动加入autoreleasepool吗？
+# 4. +animal1、+animal2初始化的对象会自动加入autoreleasepool吗？
 
 <img src="./image/Memory_manage-autorelease_汇编code.png" alt="是否自动加入pool" style="zoom:100%;" />
 
@@ -761,10 +699,10 @@ id *add(id obj)
 >
 > ```objective-c
 > for (int i = 0; i < 1000000; i++) {	
->         @autoreleasepool {
->             NSString *str = [NSString stringWithFormat:@"hello -%04d", i];
->             str = [str stringByAppendingString:@" - world"];
->         }
+>      @autoreleasepool {
+>          NSString *str = [NSString stringWithFormat:@"hello -%04d", i];
+>          str = [str stringByAppendingString:@" - world"];
+>      }
 > }
 > ```
 >
@@ -774,7 +712,7 @@ id *add(id obj)
 >
 > * 主线程的RunLoop是默认开启的， 每一次消息循环开始的时候会先创建自动释放池，这次循环结束前,会释放自动释放池，然后RunLoop等待下次事件源。此Runloop类似一个全局Runloop，但其实并不是，要理解他是每一个迭代周期开始时重新初始化，结束时销毁掉；
 > * 开发者可以在任何执行的地方创建释放池，也就是局部的释放池，这时的释放池类似于代码块 当释放池结束的时候会自动释放。
-> * `stringWithFormat:`本质上等价于 alloc + initWithFormat: + autorelease （出自：https://www.cnblogs.com/Mike-zh/p/4445174.html）
+> * `stringWithFormat:`本质上等价于 alloc + initWithFormat: + autorelease （出自：https://www.cnblogs.com/Mike-zh/p/4445171.html）
 
 # 8 autorelease运行时优化
 
@@ -826,3 +764,4 @@ id *add(id obj)
 ## （没看懂）TODO：8.2 明文调用与非明文调用
 
 https://www.jianshu.com/p/6f2e2e1eaca0
+

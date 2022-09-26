@@ -73,6 +73,260 @@ someClosure = { [unowned self] in
 
 根据官方文档 Automatic Reference Counting 所说，无主引用在其他实例有相同或者更长的生命周期时使用。
 
+> #### __unsafe_unretained & __weak & __autoreleasing 都有什么区别
+>
+> __autoreleasing 是 ARC 下用于控制变量生命周期而引入的变量限定符，用__autoreleasing修饰的指针所指向的对象会被加入到autoreleasepool中去；
+> __unsafe_unretained 和 __weak一样表示的都是对对象的一种弱引用关系；
+> 那么__unsafe_unretained 和 __weak两者的区别是什么呢？
+> (1) __weak指针指向的对象被释放后、指向该对象的__weak指针会被置为nil、所以并不会产生野指针;
+> (2) __unsafe_unretained指针指向的对象被释放后、指向该对象的__unsafe_unretained指针就变成了一个野指针、并不会被置为nil，如果此时仍通过__unsafe_unretained指针访问它所指向的对象的话、就会出现BAD_ACCESS的异常从而导致Crash的发生。
+>
+> #### 使用__weak有什么缺点呢？
+>
+> 使用__weak指针会对性能造成一定的影响，使用__weak指针时需要检查对象是否被释放、更新指针指向、创建对应的弱引用表等一系列操作(具体请参考objc_initWeak & objc_storeWeak)，如果一个对象有大量的__weak指针引用的时候，当对象被废弃时，就会去遍历weak表，把weak表里所有指向该对象的weak指针都置为nil，此时就会消耗一定的cpu资源(具体请参考objc_clear_deallocating)。
+>
+> #### 什么情形下需使用__unsafe_unretained呢？
+>
+> 当你明确对象的生命周期的时候，可以使用__unsafe_unretained来代替__weak，可以带来性能上的一些提升。
+> 比如：A对象拥有B对象、并且A对象消亡时B对象也会跟着消亡、当B对象存在A对象肯定会存在的时候，如果B对象要调用A对象的api，此时就可以让B对象通过 __unsafe_unretained 来保持对A的引用关系。
+>
+> #### 我们用一些案例来分析一下他们在具体使用过程中的区别
+>
+> ```objectivec
+> {
+>     id __weak weakArray = [NSMutableArray arrayWithCapacity:0];
+>     NSLog(@"weakArray (1-0): %@",weakArray);
+>     [weakArray addObject:@"Avery"];
+>     NSLog(@"weakArray (1-1): %@",weakArray);
+> 
+>     id __unsafe_unretained unsaferetainedArray = [NSMutableArray arrayWithCapacity:0];
+>     NSLog(@"unsaferetainedArray (1-0): %@",unsaferetainedArray);
+>     [unsaferetainedArray addObject:@"Avery"];
+>     NSLog(@"unsaferetainedArray (1-1): %@",unsaferetainedArray);
+> }
+> AveryProject[24144:2755666] weakArray (1-0): (null)
+> AveryProject[24144:2755666] weakArray (1-1): (null)
+> AveryProject[24144:2755666] unsaferetainedArray (1-0): (
+> )
+> AveryProject[24144:2755666] unsaferetainedArray (1-1): (
+>     Avery
+> )
+> ```
+>
+> 
+>
+> ```objectivec
+> {
+>     id __weak weakArray = [[NSMutableArray alloc] init];
+>     NSLog(@"weakArray (2-0): %@",weakArray);
+>     [weakArray addObject:@"Avery"];
+>     NSLog(@"weakArray (2-1): %@",weakArray);
+> 
+>     id __unsafe_unretained unsaferetainedArray = [[NSMutableArray alloc] init];
+>     NSLog(@"unsaferetainedArray (2-0): %@",unsaferetainedArray);  // 访问野指针导致Crash
+>     [unsaferetainedArray addObject:@"Avery"];
+>     NSLog(@"unsaferetainedArray (2-1): %@",unsaferetainedArray);
+> }
+> AveryProject[24144:2755666] weakArray (2-0): (null)
+> AveryProject[24144:2755666] weakArray (2-1): (null)
+> ```
+>
+> 下面来看下截屏(重点看下编译器警告):
+>
+> 
+>
+> ![img](https://upload-images.jianshu.io/upload_images/22683903-86b81177f936299d.png?imageMogr2/auto-orient/strip|imageView2/2/w/1200/format/webp)
+>
+> 编译器警告
+>
+> 
+>
+> 为什么第一组代码没有出现警告？第二组的代码出现了两个警告？
+> 我们用下面的代码来讲解：
+>
+> 
+>
+> ```objectivec
+> dispatch_async(dispatch_get_global_queue(0, 0), ^{
+>     id __weak weakArray = [NSMutableArray arrayWithCapacity:0];
+>     id __unsafe_unretained unsaferetainedArray = [NSMutableArray arrayWithCapacity:0];
+>     NSLog(@"weakArray: %p", weakArray);
+>     NSLog(@"unsaferetainedArray: %p", unsaferetainedArray);
+>             
+>     extern void _objc_autoreleasePoolPrint(void);  // 打印注册到autoreleasePool中的对象
+>     _objc_autoreleasePoolPrint();
+> });
+> AveryProject[24351:2786932] weakArray: 0x0
+> AveryProject[24351:2786932] unsaferetainedArray: 0x6000000aee80
+> objc[24351]: ##############
+> objc[24351]: AUTORELEASE POOLS for thread 0x70000ae52000
+> objc[24351]: 2 releases pending.
+> objc[24351]: [0x7fd21c00d000]  ................  PAGE  (hot) (cold)
+> objc[24351]: [0x7fd21c00d038]  ################  POOL 0x7fd21c00d038
+> objc[24351]: [0x7fd21c00d040]    0x6000000aee80  __NSArrayM
+> objc[24351]: ##############
+> ```
+>
+> 当用__weak修饰的指针直接指向新生成的对象时、对象在init之后就会被释放；
+> 通过"arrayWithCapacity:"或者"arrayWithObjects:"方法生成的对象会被加入到autoreleasepool中去，所以不会出现警告；
+>
+> 
+>
+> #### 案例一
+>
+> array的作用域在大括号内，出了作用域后array就会被释放；
+> 此时obj1就相当于野指针，访问野指针就会导致Crash~
+>
+> 
+>
+> ```objectivec
+> id __unsafe_unretained uu_obj = nil;
+> {
+>     id array = [NSMutableArray array];
+>     NSLog(@"retainCount: %lu", CFGetRetainCount((__bridge CFTypeRef)(array)));  // retainCount: 1
+>     [array addObject:@"Avery"];
+>     uu_obj = array;
+>     NSLog(@"retainCount: %lu", CFGetRetainCount((__bridge CFTypeRef)(array)));  // retainCount: 1
+> }
+> NSLog(@"uu_obj = %@", uu_obj);
+> ```
+>
+> 
+>
+> #### 案例二
+>
+> array是一个autorelease的对象、出了作用域之后array并不会马上被释放掉、下面的代码并不会引起Crash、但是这样用会很危险。
+>
+> 
+>
+> ```objectivec
+> id __unsafe_unretained uu_obj = nil;
+> {
+>     id array = [NSMutableArray arrayWithObjects:@"Avery",nil];
+>     NSLog(@"retainCount: %lu", CFGetRetainCount((__bridge CFTypeRef)(array)));  // retainCount: 2
+>     uu_obj = array;
+>     NSLog(@"retainCount: %lu", CFGetRetainCount((__bridge CFTypeRef)(array)));  // retainCount: 2
+> }
+> NSLog(@"uu_obj = %@", uu_obj);
+> ```
+>
+> 
+>
+> #### 案例三
+>
+> array是一个autorelease的对象、出了@autoreleasepool的作用域之后就会被释放掉、此时obj1就变成了野指针，访问野指针就会导致Crash~。
+>
+> 
+>
+> ```objectivec
+> id __unsafe_unretained uu_obj = nil;
+> @autoreleasepool {
+>     id array = [NSMutableArray arrayWithObjects:@"Avery",nil];
+>     NSLog(@"retainCount: %lu", CFGetRetainCount((__bridge CFTypeRef)(array)));  // retainCount: 2
+>     uu_obj = array;
+>     NSLog(@"retainCount: %lu", CFGetRetainCount((__bridge CFTypeRef)(array)));  // retainCount: 2
+> }
+> NSLog(@"uu_obj = %@", uu_obj);
+> ```
+>
+> 
+>
+> #### 案例四
+>
+> __autoreleasing的使用会使array加入到aotoreleasepool、出了作用域之后array并不会马上被释放掉、下面的代码并不会引起Crash、但是这样用会很危险。
+>
+> 
+>
+> ```objectivec
+> id __unsafe_unretained uu_obj = nil;
+> {
+>     id __autoreleasing array = [[NSMutableArray alloc] init];
+>     NSLog(@"retainCount: %lu", CFGetRetainCount((__bridge CFTypeRef)(array)));  // retainCount: 1
+>     [array addObject:@"Avery"];
+>     uu_obj = array;
+>     NSLog(@"retainCount: %lu", CFGetRetainCount((__bridge CFTypeRef)(array)));  // retainCount: 1
+> }
+> NSLog(@"uu_obj = %@", uu_obj);
+> ```
+>
+> 
+>
+> #### 案例五
+>
+> 通过getArray方法生成的array会被加入到autoreleasepool、所以下面的代码并不会Crash~
+>
+> 
+>
+> ```objectivec
+> id __unsafe_unretained uu_obj = nil;
+> {
+>     id array = [[self class] getArray];
+>     
+>     NSLog(@"retainCount: %lu", CFGetRetainCount((__bridge CFTypeRef)(array)));  // 2
+>     [array addObject:@"Avery"];
+>     uu_obj = array;
+>     NSLog(@"retainCount: %lu", CFGetRetainCount((__bridge CFTypeRef)(array)));  // 2
+> }
+> NSLog(@"uu_obj = %@", uu_obj);
+> 
+> + (id)getArray {
+>     return [NSMutableArray array];
+> }
+> ```
+>
+> 
+>
+> #### 案例六
+>
+> 通过下面代码中的getArray方法生成的array并不会被加入到autoreleasepool中、所以执行下面的代码会导致Crash~
+>
+> 
+>
+> ```objectivec
+> id __unsafe_unretained uu_obj = nil;
+> {
+>     id array = [[self class] getArray];
+>     
+>     NSLog(@"retainCount: %lu", CFGetRetainCount((__bridge CFTypeRef)(array)));  // 1
+>     [array addObject:@"Avery"];
+>     uu_obj = array;
+>     NSLog(@"retainCount: %lu", CFGetRetainCount((__bridge CFTypeRef)(array)));  // 1
+> }
+> NSLog(@"uu_obj = %@", uu_obj);
+> 
+> + (id)getArray {
+>     NSMutableArray *mArray = [NSMutableArray array];
+>     return mArray;
+> }
+> ```
+>
+> 
+>
+> #### 案例七
+>
+> 通过下面代码中的copyObject方法生成的array也不会被加入到autoreleasepool中、执行下面的代码同样也会导致Crash~ （注意和案例五的区别）
+>
+> 
+>
+> ```objectivec
+> id __unsafe_unretained uu_obj = nil;
+> {
+>     id array = [[self class] copyObject];
+>     
+>     NSLog(@"retainCount: %lu", CFGetRetainCount((__bridge CFTypeRef)(array)));  // 1
+>     [array addObject:@"Avery"];
+>     uu_obj = array;
+>     NSLog(@"retainCount: %lu", CFGetRetainCount((__bridge CFTypeRef)(array)));  // 1
+> }
+> NSLog(@"uu_obj = %@", uu_obj);
+> 
+> + (id)copyObject {
+>     return [NSMutableArray array];
+> }
+> ```
+>
+> 
+
 ## 4. iOS如何处理内存警告？
 
 如何监控内存警告，以及处理 Jetsam 事件呢？

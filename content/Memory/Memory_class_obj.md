@@ -1,6 +1,8 @@
-# 1. Clang使用
+# 前言
 
-## 1.1 借助clang命令将上层OC代码还原成 `C++`代码
+##  Clang使用
+
+####  借助clang命令将上层OC代码还原成 `C++`代码
 
 > 打开**终端**， cd 到指定的OC文件所在目录下，键入指令
 >
@@ -28,7 +30,7 @@
 > 
 > ```
 
-## 1.2  借助clang命令将上层OC代码还原成 汇编代码
+#### 借助clang命令将上层OC代码还原成 汇编代码
 
 > 打开**终端**， cd 到指定的OC文件所在目录下，键入指令
 >
@@ -44,13 +46,13 @@
 >
 > 
 
-# 2. OC中的三种对象：
+# 1. OC中的三种对象：
 
 * instance对象
 * class对象
 * meta-class对象
 
-## 2.1 instance对象
+## 1.1 实例对象（instance对象）
 
 instance对象在内存中存储的信息  包括：
 
@@ -62,7 +64,7 @@ instance对象在内存中存储的信息  包括：
   | ---------------------------------------------- |
   | isa（前8个字节）<br />成员变量值<br />…        |
 
-## 2.2 class对象
+## 1.2 类对象（class对象）
 
 class对象在内存中存储的信息 主要包括：
 
@@ -82,7 +84,7 @@ class对象在内存中存储的信息 主要包括：
   | ------------------------------------------------------------ |
   | isa （前8个字节）<br />superClass （8个字节）<br />成员变量信息<br />属性信息<br />对象方法信息<br />协议信息<br />.... |
 
-## 2.3 meta-class对象
+## 1.3 元类对象（meta-class对象）
 
 meta-class对象在内存中存储的信息主要包括：
 
@@ -98,11 +100,11 @@ meta-class对象在内存中存储的信息主要包括：
 
   
 
-## 2.4 经典图isa& super走向
+## 1.4 经典图isa& super走向
 
 <img src="./image/Memory_layout-OC类与对象_isa_super.jpg" alt="isa_super" style="zoom:60%;" />
 
-## 2.5 总结：
+## 1.5 总结：
 
 **isa指向:**
 
@@ -114,7 +116,7 @@ meta-class对象在内存中存储的信息主要包括：
 
 > 自定义class对象 ----> NSObject ----> nil
 >
-> 🌰：son ----> YLPerson ----> NSObject ----> nil 
+> 🌰：YLSon ----> YLPerson ----> NSObject ----> nil 
 
 **调试指令**
 
@@ -130,13 +132,13 @@ meta-class对象在内存中存储的信息主要包括：
 
 <img src="./image/Memory_layout-OC类与对象_isa.jpg" alt="内存地址" style="zoom:80%;" />
 
-# 3. 类的结构分析
+# 2. 类的结构分析
 
-## 3.1 类的本质
+## 2.1 类的本质
 
 类的本质是一个`objc_class`类型的结构体，`objc_class`继承于`objc_object`;
 
-### 3.1.1 类在底层的定义:
+### 2.1.1 类在底层的定义:
 
 ```cpp
 struct objc_class : objc_object {
@@ -160,9 +162,9 @@ struct objc_class : objc_object {
 > *  cache： <font color=red>`cache_t`占用16字节？？？</font>
 > *  bits:
 
-## 3.2 isa分析
+## 2.2 isa分析
 
-### 3.2.1 isa_t结构解析
+### 2.2.1 isa_t结构解析
 
 ```cpp
 // 支持arm64之后，之前只有一个class成员变量：
@@ -186,7 +188,7 @@ union isa_t {
 >
 > ARM64位架构开始(也就是13年5s面世)，`isa`是一个联合体/共用体（`union`），这是苹果对`isa`的优化，结合位域的概念以及位运算的方式来存储更多类相关信息，简单来说就是`isa`指针通过一个叫`ISA_MASK`的值进行二进制&运算，得到真实的`class/meta-class`对象的真实地址。
 
-### 3.2.2 isa源码&各位代表含义
+### 2.2.2 isa源码&各位代表含义
 
 ```objc
 // x86_64 架构
@@ -218,7 +220,7 @@ struct {
 
 注： 在 64 位环境下，优化的 isa 指针并不是就一定会存储引用计数，毕竟用 19bit （iOS 系统）保存引用计数不一定够。需要注意的是这 19 位保存的是引用计数的值减一。has_sidetable_rc 的值如果为 1，那么引用计数会存储在一个叫 SideTable 的类的属性中。（源码实现：如果是优化过的isa，extra_rc+1就是引用计数，如果有SideTable，就从SideTable拿到引用计数，从SideTable拿到的引用计数加上extra_rc+1就是总的引用计数。）
 
-#### 3.2.2.1 几个比较重要的字段
+#### 2.2.2.1 几个比较重要的字段
 
 * nonpointer （标记是否开启指针优化）
 
@@ -241,14 +243,14 @@ struct {
 
   > `isa`&`ISA_MASK` : 结果显示`高17位`是`0`，`低3位`是`0`，中间的`44位`是`1`，用来显示`isa`中的`shiftcls`。`ISA_MASK` 就像一个面具把露出来的显示，其它的全部抹掉。
 
-### 3.2.3 isa实例化方式
+### 2.2.3 isa实例化方式
 
 > 由isa源码得知，isa_t提供了两个成员，`cls`  和 ` bits`，由联合体的定义所知，这两个成员是**互斥**的，也就意味着，当初始化isa指针时，有两种初始化方式
 >
 > - 通过`cls`初始化，`bits`无默认值
 > - 通过`bits`初始化，`cls` 有默认值
 
-### 3.2.4 验证isa_t位域
+### 2.2.4 验证isa_t位域
 
 方法：使用objc源码构建可编译工程，然后在main中的`[YLPerson alloc]` (注：YLPerson未开启`+load`方法)断点 --> `initInstanceIsa` --> `initIsa` --> 走到`else`中的 `isa`初始化;
 
@@ -305,7 +307,7 @@ objc_object::initIsa(Class cls, bool nonpointer, UNUSED_WITHOUT_INDEXED_ISA_AND_
 
 <img src="./image/Memory_manage-isa_验证位域_0.jpg" alt="isa验证bits位域" style="zoom:80%;" />
 
-### 3.2.5 isa 与 类 的关联
+### 2.2.5 isa 与 类 的关联
 
 `cls` 与 `isa` 关联`原理`就是`isa`指针中的`shiftcls`位域中存储了`类信息`，其中`initInstanceIsa`的过程是将 `calloc` 指针 和当前的 `类cls` 关联起来，有以下几种验证方式：
 
@@ -318,9 +320,9 @@ objc_object::initIsa(Class cls, bool nonpointer, UNUSED_WITHOUT_INDEXED_ISA_AND_
 
 
 
-## 3.3 chceh_t分析
+## 2.3 chceh_t分析
 
-### 3.3.1 chceh_t底层源码
+### 2.3.1 chceh_t底层源码
 
 objc790,：
 
@@ -462,11 +464,90 @@ ivarLayout 和 weakIvarLayout 分别记录了哪些 ivar 是 strong 或是 weak�
 
 储存 weak ivar 的 weakIvarLayout 的值为 **0x01211000**
 
+## 2.4  类、分类的加载过程
+
+#### 2.4.1 分类如何关联对象
+
+关联对象在内存中的存储形式
+
+<img src="/Users/tangh/yuki/博客/待整合到仓库/images/关联对象.png" alt="关联对象" style="zoom:70%;" />
+
+> 问题：
+>
+> 为什么分类中不能创建属性Property（runtime除外）？
+>
+> - 分类的实现原理是将category中的方法，属性，协议数据放在category_t结构体中，然后将结构体内的方法列表拷贝到类对象的方法列表中。 Category可以添加属性，但是并不会自动生成成员变量及set/get方法。因为category_t结构体中并不存在成员变量。通过之前对对象的分析我们知道成员变量是存放在实例对象中的，并且编译的那一刻就已经决定好了。而分类是在运行时才去加载的。那么我们就无法再程序运行时将分类的成员变量中添加到实例对象的结构体中。因此分类中不可以添加成员变量。
+> - 在往深一点的回答就是 类在内存中的位置是编译时期决定的， 之后再修改代码也不会改变内存中的位置，class_ro_t 的属性在运行期间就不能再改变了， 再添加方法是会修改class_rw_t 的methods 而不是class_ro_t 中的 baseMethods
+>
+> ##### 引伸：关联对象的原理？
+>
+> - 关联对象并不是存储在关联对象本身内存中，而是存储在全局统一的一个容器中；
+> - 由 AssociationsManager 管理并在它维护的一个单例 Hash 表 AssociationsHashMap 中存储；
+> - 使用 AssociationsManagerLock 自旋锁保证了线程安全
+>
+> ##### 引伸：分类可以添加那些内容？
+>
+> - 实例方法，类方法，协议，属性
+>
+> ##### 引伸：Category 的实现原理？
+>
+> - Category 在刚刚编译完成的时候， 和原来的类是分开的，只有在程序运行起来的时候， 通过runtime合并在一起。
+>
+> ##### 引申 使用runtime Associate方法关联的对象，需要在主对象dealloc的时候释放么？
+>
+> - 不需要，被关联的对象的生命周期内要比对象本身释放晚很多， 它们会在被 NSObject -dealloc 调用的 object_dispose() 方法中释放。
+>
+> ##### 引申 能否向编译后得到的类中增加实例变量， 能否向运行时创建的类中添加实力变量？
+>
+> - 不能再编译后得到的类中增加实例变量。因为编译后的类已经注册在runtime中， 类结构体中objc_ivar_list 实例变量的链表和objc_ivar_list 实例变量的内存大小已经确定，所以不能向存在的类中添加实例变量
+> - 能在运行时创建的类中添加实力变量。调用class_addIvar 函数
+>
+> ##### 引申 主类执行了foo方法，分类也执行了foo方法，在执行的地方执行了foo方法，主类的foo会被覆盖么？    如果想只想执行主类的foo方法，如何去做？
+>
+> - 主类的方法被分类的foo覆盖了，其实分类并没有覆盖主类的foo方法，只是分类的方法排在方法列表前面，主类的方法列表被挤到了后面， 调用的时候会首先找到第一次出现的方法。
+> - 如果想要只是执行主类的方法，可逆序遍历方法列表，第一次遍历到的foo方法就是主类的方法
+>
+> ```objective-c
+> - (void)foo{   
+>   [类 invokeOriginalMethod:self selector:_cmd];
+> }
+> 
+> + (void)invokeOriginalMethod:(id)target selector:(SEL)selector {
+>     uint count;
+>     Method *list = class_copyMethodList([target class], &count);
+>     for ( int i = count - 1 ; i >= 0; i--) {
+>         Method method = list[i];
+>         SEL name = method_getName(method);
+>         IMP imp = method_getImplementation(method);
+>         if (name == selector) {
+>             ((void (*)(id, SEL))imp)(target, name);
+>             break;
+>         }
+>     }
+>     free(list);
+> }
+> ```
+>
 
 
-# 4. 对象的结构分析
 
-## 4.1 对象的本质
+## 2.5 weak的实现原理
+
+**weak 的实现原理可以概括一下三步：**
+
+1、初始化时: 初始化一个新的weak指针指向对象。
+
+2、存储引用时：调用 objc_storeWeak() 函数，将weak指针的地址存到SideTable下weak_tabel中。
+
+3、释放时，在弱引用对象释放时，**clearDeallocating**中将weak指针置为nil；
+
+调用clearDeallocating函数。首先根据对象地址获取所有weak指针地址的数组，然后遍历这个数组把其中的数据设为nil，最后把这个entry从weak表中删除，最后清理对象的记录。
+
+## 2.6 消息转发机制
+
+# 3. 对象的结构分析
+
+## 3.1 对象的本质
 
 <img src="./image/Memory_layout-OC类与对象_对象的本质_0.png" alt="YLPet编译前" style="zoom:50%;" />
 
@@ -500,9 +581,9 @@ private:
 
 对象的本质是一个`objc_object`类型的结构体，其内部只有一个isa指针。
 
-## 4.2 Tagged Pointer对象（特例）
+## 3.2 Tagged Pointer对象（特例）
 
-### 4.2.1 为什么要使用taggedPointer?
+### 3.2.1 为什么要使用taggedPointer?
 
 > 假设要存储一个NSNumber对象，其值是一个整数。正常情况下，如果这个整数只是一个NSInteger的普通变量，在64位CPU下是占8个字节的。1个字节有8位，如果我们存储一个很小的值，会出现很多位都是0的情况，这样就造成了内存浪费，苹果为了解决这个问题，引入了taggedPointer的概念。
 >
@@ -516,7 +597,7 @@ private:
 - **Tagged Pointer指针**的值不再是地址了，而是真正的值。所以，实际上它**不再是一个对象**了，它只是一个披着对象皮的普通变量而已。所以，它的**内存并不存储在堆中（而是在栈上），也**不需要malloc和free**。
 - **Tagged Pointer指针**中包含了当前对象的地址、类型、具体数值。因此Tagged Pointer指针在内存读取上有着3倍的效率，创建时比普通需要**malloc**跟**free**的类型**快106倍**。
 
-### 4.2.2 内存结构
+### 3.2.2 内存结构
 
 <img src="./image/Memory_manage-taggedPointer_64.jpg" alt="TaggedPointerbit分布图" style="zoom:50%;" />
 
@@ -524,7 +605,7 @@ private:
 
 注意：与macOS不同，iOS系统采用 `MSB`（`Most Significant Bit`，即最高有效位）为`Tagged Pointer`标志位。
 
-### 4.2.3 各bit含义解释
+### 3.2.3 各bit含义解释
 
 * _OBJC_TAG_MASK: 占1bit，是`Tagged Pointer`标志位，1意味着该地址是`Tagged Pointer`，0则不是。
 
@@ -551,7 +632,7 @@ private:
 
 
 
-### 4.2.4 如何判断指针是否为Tagged Pointer
+### 3.2.4 如何判断指针是否为Tagged Pointer
 
 在 [objc runtime](https://link.juejin.cn?target=https%3A%2F%2Fgithub.com%2FKanthine%2FSourceCode%2Fblob%2F51fd88340a1d76047dcb8bb02e47f14482d00706%2Fobjc4-750%2Fruntime%2Fobjc-internal.h)源码中找到了 _objc_isTaggedPointer()的实现：
 
@@ -574,11 +655,11 @@ private:
 
 因此` ptr & _OBJC_TAG_MASK` 按位与运算之后如果判断标志位为1则该指针是Tagged Pointer 。
 
-### 4.2.5 TaggedPointer混淆原理：
+### 3.2.5 TaggedPointer混淆原理：
 
 混淆原理：使用一个随机数`objc_debug_taggedpointer_obfuscator`对真正的内存地址异或操作。根据异或运算的特性，a^b^b=a，因此只需要将混淆后的地址再与`objc_debug_taggedpointer_obfuscator`异或一次就能够完成反混淆。
 
-### 4.2.6 **附**：Tagged Pointer 针对 **obj_msg_send** 的处理
+### 3.2.6 **附**：Tagged Pointer 针对 **obj_msg_send** 的处理
 
 ​	•	对于内置Tagged Pointer类型的对象来说，其中的高四位保存的是一个索引值，通过这个索引值可以在objc_debug_taggedpointer_classes数组中查找到对象所属的Class对象；
 
@@ -586,7 +667,7 @@ private:
 
 
 
-## 4.3 非TaggedPointer对象
+## 3.3 非TaggedPointer对象
 
 对象是否不启用Non-pointer目前有这么几个判断条件，这些都可以在runtime源码objc-runtime-new.m中找到逻辑。
 
@@ -599,7 +680,7 @@ private:
 
 我们自己新建一个Person类，通过OBJC_DISABLE_NONPOINTER_ISA=YES/NO来看看isa结构体的具体内容:
 
-### 4.3.1 non-poniter：0 对象
+### 3.3.1 non-poniter：0 对象
 
 ```cpp
 isa_t isa = {
@@ -624,7 +705,7 @@ isa_t isa = {
 因为源码中显示不使用Non-pointer则只对isa的class赋值了，其他的都是默认值，而且除了class其他成员也不会在源码中被使用到。
 ```
 
-### 4.3.2 non-poniter：1 对象
+### 3.3.2 non-poniter：1 对象
 
 ```cpp
 isa_t isa = {
@@ -645,9 +726,9 @@ isa_t isa = {
 extra_rc就是存的引用计数，nonpointer = 1表示启用Non-pointer。
 ```
 
-# 5. alloc源码探索
+# 4. alloc源码探索
 
-## 5.1 alloc调用堆栈：
+## 4.1 alloc调用堆栈：
 
 `+ alloc` ----> `_objc_rootAlloc` ---> `callAlloc(cls, false/*checkNil*/, true/*allocWithZone*/);` ----> `_objc_rootAllocWithZone` ---> `_class_createInstanceFromZone`；
 
@@ -708,7 +789,7 @@ _class_createInstanceFromZone(Class cls, size_t extraBytes, void *zone,
 
 ```
 
-## 5.2 核心三步：
+## 4.2 核心三步：
 
 * 计算instancesize （**这里有一个16字节对齐**）
 
@@ -742,7 +823,13 @@ _class_createInstanceFromZone(Class cls, size_t extraBytes, void *zone,
   >
   > `obj->initInstanceIsa(cls, hasCxxDtor);` --->   `initIsa(cls, true, hasCxxDtor); `  -->   ` newisa.setClass(cls, this);`
 
+# 5. 关于NSProxy与NSObject
 
+<img src="./image/Memory_layout-OC类与对象_NSObject.jpg" alt="NSobject" style="zoom:80%;" />
+
+<img src="./image/Memory_layout-OC类与对象_NSProxy.jpg" style="zoom:80%;" />
+
+### 
 
 # 6.面试题
 
@@ -841,7 +928,7 @@ _class_createInstanceFromZone(Class cls, size_t extraBytes, void *zone,
 >
 >     ```objective-c
 >     @interface YLAnimal : NSObject
->               
+>                           
 >     + (id)newTestObject;  // 返回一个自动关联为YLAnimal类型的对象
 >     + (id)allocTestObject;// 返回一个自动关联为YLAnimal类型的对象
 >     + (id)testObject;// 返回一个类型不明的对象
@@ -854,10 +941,4 @@ _class_createInstanceFromZone(Class cls, size_t extraBytes, void *zone,
 >
 >   * 非以上关键字开头的方法,返回值不关联所属类的类型，会返回一个类型不明的对象;
 
-# TODO : 关于NSProxy与NSObject
-
-<img src="./image/Memory_layout-OC类与对象_NSObject.jpg" alt="NSobject" style="zoom:80%;" />
-
-<img src="./image/Memory_layout-OC类与对象_NSProxy.jpg" style="zoom:80%;" />
-
-### 
+###
