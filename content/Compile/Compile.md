@@ -215,11 +215,11 @@ PM 工具基本围绕这个两个文件来现实包管理：
 >
 >    ```ruby
 >    # frozen_string_literal: true
->    
+>       
 >    source "https://rubygems.org"
->    
+>       
 >    git_source(:github) {|repo_name| "https://github.com/#{repo_name}" }
->    
+>       
 >    # gem "rails"
 >    gem "cocoapods", "1.5.3"
 >    ```
@@ -440,76 +440,195 @@ CocoaPods是用 Ruby 写的，并由若干个 Ruby 包 (gems) 构成的：
 
 - - 这个 gem 组件负责所有工程文件的整合。它能够对创建并修改 .xcodeproj 和 .xcworkspace 文件。它也可以作为单独的一个 gem 包使用。如果你想要写一个脚本来方便的修改工程文件，那么可以使用这个 gem。
 
-# 4.
+# 4. 私有库&公开库
 
-1. **读取 Podfile 文件**
+## 4.1 自建私有库
 
-2. - 在加载 podspecs 过程中，CocoaPods 就建立了包括版本信息在内的所有的第三方库的列表。Podspecs 被存储在本地路径 ~/.cocoapods 中。
+完整步骤
+
+1. 创建远程索引库；
+
+2. 创建本地索引仓库，并与远程仓库关联，查看本地索引库确认创建成功；
+
+3. 创建远程代码库；
+
+4. 创建本地代码库，推荐使用`pod lib create XxxxKit`创建，自带简易demo；
+
+5. 编写代码库代码，添加库文件；【用自己的代码文件替换`/XxxKit/XxxKit/Classes`目录下的`Replace.m`文件】
+
+6. `pod install`将库文件导入example工程中；注：此时Podfile文件中使用的是本地路径，即：使用的是本地私有库；
+
+   > 这一步会将刚才拖入到 Classes 目录中的文件导入到`Example`示例工程中；
+   >
+   > 导入后的库文件可在 XxxKit.xcworkspace 的 Pods.xcodeproj 中查看。 
+
+7. 根据需求修改`.podspec`文件；
+
+8. 回到代码库根目录，提交代码到远程代码仓库，大致过程如下：
+
+   ```crystal
+   git add .
+   git commit -m “x”
+   git remote add origin https://github.com/XXX/XxxKit.git
+   git push origin master	
+   ```
+
+   设置标签：
+
+   ```crystal
+   git tag 版本号
+   git push —-tags (注意：一定要先将tag推送到远程仓库，否则后面验证仓库时无法通过验证)
+   ```
+
+   CocoaPods 依赖于标签，标签的版本号须与.podspec文件中的版本号保持一致~
+
+9. 验证podspec文件;
+
+   验证可分为两种：验证本地和远程仓库，都稍微费些时间。
+
+   > 1. 只验证本地仓库
+   >
+   > ```CRYSTAL
+   > pod lib lint 仓库名.podspec
+   > ```
+   >
+   > 2. 验证远程仓库
+   >
+   > 既验证本地仓库又验证远程仓库：
+   >
+   > ```CRYSTAL
+   > pod spec lint 仓库名.podspec --verbose --allow-warnings
+   > ```
+   >
+   > 如果验证通过，则会显示如下样式：
+   >
+   > ```crystal
+   > ** BUILD SUCCEEDED **
+   > Testing with `xcodebuild`. 
+   >  -> XxxKit (0.1.1)
+   >  .
+   >  .
+   >  .
+   > ```
+
+10. 
+
+10. 推送索引文件
+
+    将本地索引文件推送到远程索引库：
+
+    ```crystal
+    pod repo push 本地索引库name 索引文件名 --verbose --allow-warnings
+    ```
+
+11. 导入库私有库
+
+    > 到目前为止我们发布的还只是私有库，尚无法通过`pod search`命令从官方`master`索引库中查找的到~
+    >
+    > 此私有库可在自己的项目或公司范围内使用，只需在想要使用此库的工程中修改Podfile文件：
+    >
+    > ```
+    > ########
+    > 
+    > use_frameworks!
+    > 
+    > # 指定自制库MMKit的远程索引库地址
+    > # 方式1：source 'https://github.com/xxx.git'
+    > 
+    > target 'ASDF' do
+    > # 方式2：
+    >     pod 'MMKit', :source => 'https://github.com/xxx.git'
+    > end
+    > 
+    > ########
+    > ```
+    >
+    > 即使用`:source =>`指定私有库的远程索引库地址即可~
 
 
 
-1. **加载源文件**
+## 4.2 自建公开库
 
-2. - 每个 .podspec 文件都包含一个源代码的索引，这些索引一般包裹一个 git 地址和 git tag。它们以 commit SHAs 的方式存储在 ~/Library/Caches/CocoaPods 中。这个路径中文件的创建是由 Core gem 负责的。
-   - **CocoaPods** 将依照 **Podfile**、**.podspec** 和缓存文件的信息将源文件下载到 **Pods** 目录中
+其实就是将私有库升级为公开库，公开库可以不用指定索引git地址，pod search就可以找到；
 
+1. 发布公开库
 
+   > 1. 注册pod trunk;
+   >
+   >    ```crystal
+   >    pod trunk register 邮箱 ‘名称’ --description=‘xxx’ --verbose
+   >    ```
+   >
+   > 2. 验证邮箱：前往注册时的邮箱点击链接即可完成验证~
+   >
+   > 3. 确认注册信息
+   >
+   >    ```crystal
+   >    pod trunk me	
+   >    ```
 
-1. **生成 Pods.xcodeproj**
+2. 提交`.podspec`文件
 
-2. - 每次 pod install 执行，如果检测到改动时，CocoaPods 会利用 Xcodeproj gem 组件对 Pods.xcodeproj 进行更新。如果该文件不存在，则用默认配置生成。否则，会将已有的配置项加载至内存中。
+   ```crystal
+   pod trunk push MMKit.podspec --allow-warnings
+   
+   // 日志
+   Updating spec repo `master`
+   Validating podspec
+    -> MMKit (0.1.1)
+       - NOTE  | xcodebuild:  note: Using new build system
+       - NOTE  | [iOS] xcodebuild:  note: Planning build
+       - NOTE  | [iOS] xcodebuild:  note: Constructing build description
+   
+   Updating spec repo `master`
+   
+   --------------------------------------------------------------------------------
+    🎉  Congrats
+   
+    🚀  MMKit (0.1.1) successfully published
+    📅  August 31st, 08:23
+    🌎  https://cocoapods.org/pods/MMKit
+    👍  Tell your friends!
+   --------------------------------------------------------------------------------
+   ```
 
+   
 
+3. 搜索自己的库
 
-1. **安装第三方库**
+   > - 查询trunk
+   >
+   > ```crystal
+   > pod trunk me
+   >   - Name:     xxxx
+   >   - Email:    xxxxxx@xx.com
+   >   - Since:    August 31st, 04:20
+   >   - Pods:
+   >     - MMKit
+   >   - Sessions:
+   >     - August 31st, 04:20 - January 6th, 2020 09:14. IP: 183.156.110.234
+   > 
+   > MARKDOWN
+   > ```
+   >
+   > 可以看到`Pods:`目录下顺利出现了自制的库 DaKit。
+   >
+   > - 查询pod
+   >
+   > ```crystal
+   > pod search MMKit
+   > ```
+   >
+   > 如果无法查到，则先更新索引库，再重新查找：
+   >
+   > ```crystal
+   > pod repo update
+   > pod search MMKit
+   > ```
 
-2. - 由于每个第三方库有不同的 target，因此对于每个库，都会有几个文件需要添加，每个 target 都需要：
+4. 导入、使用公开库（同`SDWebImage`一样使用即可）；
 
-   - - 一个包含编译选项的 **.xcconfig** 文件
-     - 一个同时包含编译设置和 **CocoaPods** 默认配置的私有 **.xcconfig** 文件
-     - 一个编译所必须的 **prefix.pch** 文件
-     - 另一个编译必须的文件 **dummy.m**
-
-
-
-- - 当每个 pod 的 target 完成了上面的内容时，整个 Pods target 就会被创建。
-  - 同时如果源码中包含有资源 **bundle**，还会将这个 bundle 添加至程序 target 的指令将被添加到 **Pods-Resources.sh** 文件中。
-  - 还有一个名为 **Pods-environment.h** 的文件，文件中包含了一些宏，这些宏可以用来检查某个组件是否来自 pod。
-  - 最后，将生成两个认可文件，一个是 **plist**，另一个是 **markdown**，这两个文件用于给最终用户查阅相关许可信息。
-
-
-
-1. **读取写入至磁盘**
-
-2. - 之前的许多工作都是在内存中进行的。为了让这些成果能被重复利用，我们需要将所有的结果保存到一个文件中。所以 Pods.xcodeproj 文件被写入磁盘，另外两个非常重要的文件：Podfile.lock 和 Manifest.lock 都将被写入磁盘。
-
-
-
-- -  **Podfile.lock**
-
-  - - 这是 CocoaPods 创建的最重要的文件之一。它记录了需要被安装的 pod 的每个已安装的版本。如果你想知道已安装的 pod 是哪个版本，可以查看这个文件。推荐将 Podfile.lock 文件加入到版本控制中，这有助于整个团队的一致性。
-
-
-
-- - **Manifest.lock**
-
-  - - 这是每次运行 **pod install** 命令时创建的 **Podfile.lock** 文件的副本。如果你遇见过这样的错误 沙盒文件与 **Podfile.lock** 文件不同步 **(The sandbox is not in sync with the Podfile.lock)**，这是因为 **Manifest.lock** 文件和 **Podfile.lock** 文件不一致所引起。由于 **Pods** 所在的目录并不总在版本控制之下，这样可以保证开发者运行 **app** 之前都能更新他们的 **pods**，否则 **app** 可能会 **crash**，或者在一些不太明显的地方编译失败。
-
-
-
-- - **xcproj**
-
-  - - 如果你已经依照我们的建议在系统上安装了 [xcproj](https://github.com/0xced/xcproj)，它会对 Pods.xcodeproj 文件执行一下 touch 以将其转换成为旧的 ASCII plist 格式的文件。为什么要这么做呢？虽然在很久以前就不被其它软件支持了，但是 Xcode 仍然依赖于这种格式。如果没有 xcproj，你的 Pods.xcodeproj 文件将会以 XML 格式的 plist 文件存储，当你用 Xcode 打开它时，它会被改写，并造成大量的文件改动。
-
-
-
-注意：
-
-- 为了保证 **pod** 库版本兼容，建议将 **Podfile.lock** 文件纳入版本控制，这样不仅简单方便，也能保证所使用 **Pod** 的版本是正确的。
-
-
-
-
+   
 
 **Cocoapods 发布流程**
 
@@ -520,11 +639,7 @@ CocoaPods是用 Ruby 写的，并由若干个 Ruby 包 (gems) 构成的：
 3. [**iOS 基于 Cocoapods 插件进行组件二进制的探索**](https://juejin.cn/post/6882212750513307655)**（源码分析为主）**
 4. [基于**CocoaPods**的组件化原理及私有库实践](https://cloud.tencent.com/developer/article/1398152)（补充内容）
 
-
-
-- 核心是管理 **podSpec** 索引文件。
-
-
+<font color='red'>核心是管理 **podSpec** 索引文件。</font>
 
 - **发布cocoapods 的静态库，关键节点**
 
@@ -538,21 +653,12 @@ CocoaPods是用 Ruby 写的，并由若干个 Ruby 包 (gems) 构成的：
 
 
 
-1. 1. **找到生成的.framework文件，移动到你想要放的位置（该位置必须与podspec文件里s.ios.vendored_frameworks的位置一样）**
-
-   2. **修改podspec文件**
-
-   3. - **s.ios.vendored_frameworks = 'XHLib.framework' #**自己的framework
-
-      - **注意：如果是开源库的话修改 source_files 配置**
-
-      - - **s.source_files = 'XHLib/Classes/\**/\*'**
-
-
-
-1. 1. **commit、tag、push**
-
-
+1. **找到生成的.framework文件，移动到你想要放的位置（该位置必须与podspec文件里s.ios.vendored_frameworks的位置一样）**
+2. 修改podspec文件
+1. **s.ios.vendored_frameworks = 'XHLib.framework' #**自己的framework
+- **注意：如果是开源库的话修改 source_files 配置**
+   
+- - **s.source_files = 'XHLib/Classes/\**/\*'**
 
 - 🌰：
 
@@ -561,7 +667,7 @@ CocoaPods是用 Ruby 写的，并由若干个 Ruby 包 (gems) 构成的：
 
 
 
-**Cocoapods 编译原理**
+# 5.**Cocoapods 编译原理**
 
 参考：
 
@@ -617,61 +723,35 @@ CocoaPods是用 Ruby 写的，并由若干个 Ruby 包 (gems) 构成的：
 
 - - **文件结构**
 
-
-
-**Pods**
-
-**├── Podfile # 指向根目录下的Podfile 说明依赖的第3方库**
-
-**├── Frameworks # 文件系统并没有对应的目录 这只是1个虚拟的group 表示需要链接的frameowork**
-
-**├── └── iOS   # 文件系统并没有对应的目录 这只是1个虚拟的group 这里表示是ios需要链接的framework**
-
-**├──   └── Xxx.framework # 链接的frameowork列表**
-
-**├── Pods    # 虚拟的group 管理所有第3方库**
-
-**│  └── AFNetwoking #AFNetworking库 虚拟group 对应文件系统Pods/AFNetworking/AFNetworking目录下的内容**
-
-**│    ├── xxx.h  #AFNetworking库的头文件 对应文件系统Pods/AFNetworking/AFNetworking目录下的所有头文件**
-
-**│    ├── xxx.m  #AFNetworking库的实现文件 对应文件系统Pods/AFNetworking/AFNetworking目录下的所有实现文件**
-
-**│    └── Support Files # 虚拟group 支持文件 没有直接对应的文件系统目录，该group下的文件都属于目录: Pods/Target Support Files/AFNetworking/**
-
-**│      ├── AFNetworking.xcconfig # AFNetworking编译的工程配置文件**
-
-**│      ├── AFNetworking-prefix.pch # AFNetworking编译用的预编译头文件**
-
-**│      └── AFNetworking-dummy.m  # 空实现文件**
-
-**├── Products # 虚拟group**
-
-**│  ├── libAFNetworking.a # AFNetworking target将生成的静态库**
-
-**│  └── libPods-CardPlayer.a # Pods-CardPlayer target将生成的静态库**
-
-**└── Targets Support Files # 虚拟group 管理支持文件**
-
-**└── Pods-CardPlayer  # 虚拟group Pods-CardPlayer target**
-
-**├── Pods-CardPlayer-acknowledgements.markdown # 协议说明文档**
-
-**├── Pods-CardPlayer-acknowledgements.plist  # 协议说明文档**
-
-**├── Pods-CardPlayer-dummy.m # 空实现**
-
-**├── Pods-CardPlayer-frameworks.sh # 安装framework的脚本**
-
-**├── Pods-CardPlayer-resources.sh  # 安装resource的脚本**
-
-**├── Pods-CardPlayer.debug.xcconfig # debug configuration 的 配置文件**
-
-**└── Pods-CardPlayer.release.xcconfig # release configuration 的 配置文件**
-
-
-
-
+> ```ruby
+> Pods
+> ├── Podfile # 指向根目录下的Podfile 说明依赖的第3方库
+> ├── Frameworks  # 文件系统并没有对应的目录 这只是1个虚拟的group 表示需要链接的frameowork
+> ├── └── iOS     # 文件系统并没有对应的目录 这只是1个虚拟的group 这里表示是ios需要链接的framework
+> ├──     └── Xxx.framework # 链接的frameowork列表
+> ├── Pods        # 虚拟的group 管理所有第3方库
+> │   └── AFNetwoking  #AFNetworking库 虚拟group 对应文件系统Pods/AFNetworking/AFNetworking目录下的内容
+> │       ├── xxx.h    #AFNetworking库的头文件 对应文件系统Pods/AFNetworking/AFNetworking目录下的所有头文件
+> │       ├── xxx.m    #AFNetworking库的实现文件 对应文件系统Pods/AFNetworking/AFNetworking目录下的所有实现文件
+> │       └── Support Files  # 虚拟group 支持文件 没有直接对应的文件系统目录，该group下的文件都属于目录: Pods/Target Support Files/AFNetworking/
+> │           ├── AFNetworking.xcconfig  # AFNetworking编译的工程配置文件
+> │           ├── AFNetworking-prefix.pch # AFNetworking编译用的预编译头文件
+> │           └── AFNetworking-dummy.m   # 空实现文件
+> ├── Products  # 虚拟group
+> │   ├── libAFNetworking.a # AFNetworking target将生成的静态库
+> │   └── libPods-CardPlayer.a  # Pods-CardPlayer target将生成的静态库
+> └── Targets Support Files  # 虚拟group 管理支持文件
+> └── Pods-CardPlayer    # 虚拟group Pods-CardPlayer target
+> ├── Pods-CardPlayer-acknowledgements.markdown # 协议说明文档
+> ├── Pods-CardPlayer-acknowledgements.plist   # 协议说明文档
+> ├── Pods-CardPlayer-dummy.m  # 空实现
+> ├── Pods-CardPlayer-frameworks.sh  # 安装framework的脚本
+> ├── Pods-CardPlayer-resources.sh    # 安装resource的脚本
+> ├── Pods-CardPlayer.debug.xcconfig  # debug configuration 的 配置文件
+> └── Pods-CardPlayer.release.xcconfig # release configuration 的 配置文件
+> ```
+>
+> 
 
 
 
