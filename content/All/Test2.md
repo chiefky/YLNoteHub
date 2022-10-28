@@ -22,7 +22,7 @@
 
  ### 1. 如何捕获Mach异常？
 
-><img src="/Users/tangh/yuki/博客/文章仓库/YLNoteHub/content/All/image/crash-mach_1.jpeg" alt="img" style="zoom:80%;" />
+><img src="/Users/tangh/yuki/博客/文章仓库/YLNoteHub/content/All/image/crash-mach_1.jpeg" alt="img" style="zoom:30%;" />
 >
 >参考上图，主要的流程是：新建一个监控线程，在监控线程中监听 Mach 异常并处理异常信息。主要的步奏如下图：
 >
@@ -370,6 +370,176 @@
 
 ### 1. 怎么降低应用的线上crash率？
 
+综合，基本都是通过hook原始方法替换成安全方法解决。具体情况根据方法处理内容决定。
+
+> ### UIKit Called on Non-Main Thread
+>
+> UIKit不是线程安全的，执行UIKit操作如果不在主线程很可能造成程序Crash。所以对UIView 的setNeedsLayout，layoutIfNeeded，layoutSubviews，setNeedsUpdateConstraints方法进行hook。如果执行以上函数没有在主队列，dispatch到主线程执行。
+>
+> ```objective-c
+> - (void)wt_safe_setNeedsLayout
+> {
+>     if(![NSThread isMainThread]){
+>         dispatch_async(dispatch_get_main_queue(), ^{
+>             NSAssert(false, @"wt_safe_setNeedsLayout failed");
+>             [self wt_safe_setNeedsLayout];
+>         });
+>     }else{
+>         [self wt_safe_setNeedsLayout];
+>     }
+> }
+> ```
+>
+> ### 避免 Foundation 类Carsh
+>
+> ### NSString
+>
+> ```objectivec
+> + (instancetype)stringWithUTF8String:(const char *)bytes
+> - (instancetype)initWithString:(NSString *)aString
+> - (instancetype)initWithUTF8String:(const char *)nullTerminatedCString
+> - (instancetype)initWithFormat:(NSString *)format locale:(id)locale arguments:(va_list)argList
+> - (NSString *)stringByAppendingString:(NSString *)aString
+> - (unichar)characterAtIndex:(NSUInteger)index
+> - (void)getCharacters:(unichar *)buffer range:(NSRange)range
+> - (NSRange)rangeOfCharacterFromSet:(NSCharacterSet  *)searchSet 
+>                             options:(NSStringCompareOptions)mask
+>                               range:(NSRange)searchRange
+>                                     
+> - (NSRange)rangeOfString:(NSString *)searchString
+>                 options:(NSStringCompareOptions)mask
+>                   range:(NSRange)searchRange
+>                  locale:(NSLocale *)locale
+> - (NSString *)substringFromIndex:(NSUInteger)from
+> - (NSString *)substringWithRange:(NSRange)range
+> - (NSString *)substringToIndex:(NSUInteger)to
+> - (void)getLineStart:(NSUInteger *)startPtr   
+>                  end:(NSUInteger *)lineEndPtr                                         
+>                  contentsEnd:(NSUInteger *)contentsEndPtr
+>                    forRange:(NSRange)range
+> ```
+>
+> ### NSAttributedString
+>
+> hook 方法：对传入参数range 进行check，如果range有问题，直接返回nil
+>
+> ```objectivec
+> - (NSAttributedString *)attributedSubstringFromRange:(NSRange)range;
+> ```
+>
+> ### NSFileManager
+>
+> ```objectivec
+> - (nullable NSDirectoryEnumerator<NSURL *> *)enumeratorAtURL:(NSURL *)url includingPropertiesForKeys:(nullable NSArray<NSURLResourceKey> *)keys options:(NSDirectoryEnumerationOptions)mask errorHandler:(nullable BOOL (^)(NSURL *url, NSError *error))handler
+> ```
+>
+> ### NSIndexPath
+>
+> ```objectivec
+> - (void)getIndexes:(NSUInteger *)indexes range:(NSRange)positionRang
+> ```
+>
+> ### NSJSONSerialization
+>
+> ```objectivec
+> + (NSData *)dataWithJSONObject:(id)obj options:(NSJSONWritingOptions)opt error:(NSError **)error
+> ```
+>
+> ### NSDictionary
+>
+> hook 方法：
+>
+> ```objectivec
+> + (id)sharedKeySetForKeys:(NSArray<KeyType <NSCopying>> *)keys
+> - (instancetype)initWithObjects:(const ObjectType _Nonnull [_Nullable])objects forKeys:(const KeyType <NSCopying> _Nonnull [_Nullable])keys
+> - (instancetype)initWithObjects:(const ObjectType _Nonnull [_Nullable])objects forKeys:(const KeyType <NSCopying> _Nonnull [_Nullable])keys count:(NSUInteger)cnt
+> ```
+>
+> ### NSMutableDictionary
+>
+> hook 方法：
+>
+> ```erlang
+> + (NSMutableDictionary<KeyType, ObjectType> *)dictionaryWithSharedKeySet:(id)keyset
+> - (void)setObject:(ObjectType)anObject forKey:(KeyType <NSCopying>)aKey;
+> - (void)removeObjectForKey:(KeyType)aKey;
+> ```
+>
+> ### NSSet
+>
+> ```erlang
+> - (instancetype)WT_initWithObjects:(const id [])objects count:(NSUInteger)cnt
+> - (void)addObject:(id)object;
+> - (void)makeObjectsPerformSelector:(SEL)aSelector
+> - (void)makeObjectsPerformSelector:(SEL)aSelector
+>                         withObject:(id)argument
+> ```
+>
+> ### NSMutableSet
+>
+> ```erlang
+> - (void)addObject:(id)anObject
+> ```
+>
+> ### NSMutableString
+>
+> ```objectivec
+> - (void)setString:(NSString *)aString
+> - (void)appendString:(NSString *)aString
+> - (void)deleteCharactersInRange:(NSRange)range
+> - (void)insertString:(NSString *)aString atIndex:(NSUInteger)loc
+> - (void)replaceCharactersInRange:(NSRange)range withString:(NSString *)aString
+> -  (NSUInteger)replaceOccurrencesOfString:(NSString *)target
+>                                      withString:(NSString *)replacement
+>                                         options:(NSStringCompareOptions)options
+>                                           range:(NSRange)searchRange
+> ```
+>
+> \###NSURL
+>
+> ```objectivec
+> + (NSURL *)fileURLWithPath:(NSString *)path
+> + (NSURL *)fileURLWithPath:(NSString *)path isDirectory:(BOOL)isDir
+> + (NSURL *)fileURLWithPathComponents:(NSArray<NSString *> *)components
+> + (NSURL *)fileURLWithPath:(NSString *)path
+>                       isDirectory:(BOOL)isDir
+>                     relativeToURL:(NSURL *)baseURL
+> - (instancetype)initWithString:(NSString *)URLString relativeToURL:(NSURL *)baseURL
+> - (instancetype)initFileURLWithPath:(NSString *)path
+> - (instancetype)initFileURLWithPath:(NSString *)path
+>                              relativeToURL:(NSURL *)baseURL
+> - (instancetype)initFileURLWithPath:(NSString *)path
+>                                isDirectory:(BOOL)isDir
+>                              relativeToURL:(NSURL *)baseURL
+> ```
+>
+> 1. KVO
+> 2. 容器越界（NSArray， NSDictionary,...）
+> 3. unrecognized selector crash (这个很多时候是由于class使用错误导致)
+> 4. NSTimer 导致crash
+>
+> ### KVO Crash
+>
+> 项目中KVO crash 占比很高， 主要原因为，添加删除不对称导致。 解决方法为，添加Map进行缓存。
+>
+> ### unrecognized selector crash
+>
+> ```objective-c
+>     [NSObject jr_swizzleMethod:@selector(forwardingTargetForSelector:) withMethod:@selector(WT_safeForwardingTargetForSelector:) error:&error];
+>     
+>     - (id)WT_safeForwardingTargetForSelector:(SEL)aSelector
+> {
+>     NSMethodSignature *signature = [self methodSignatureForSelector:aSelector];
+>     if ([self respondsToSelector:aSelector] || signature) {
+>         return [self WT_safeForwardingTargetForSelector:aSelector];
+>     }
+>     
+>     return [WTSafeGuard createFakeForwardTargetObject:self selector:aSelector];
+> }
+> ```
+>
+> 
+
 ### 2. 收到一个线上crash，你一般怎么进行解析？
 
 ### 3. 通过线上防护可以降低crash率？怎么进行全局的crash线上防护？
@@ -474,6 +644,7 @@ void -[ViewController viewDidLoad](void * self, void * _cmd) {
 
 > 1. block
 > 1. delegate
+> 1. NSTimer
 > 1. // Swift 方法嵌套
 
 ## 3.2 分别有什么解决方法？
@@ -548,6 +719,23 @@ NSProxy is an abstract superclass defining an API for objects that act as stand-
 
 ## 4.3 NSProxy 与NSObject的区别
 
+虽然NSProxy和class NSObject都定义了`-forwardInvocation:`和`-methodSignatureForSelector:`，但这两个方法并没有在protocol NSObject中声明；两者对这俩方法的调用逻辑更是完全不同。
+
+对于class NSObject而言，接收到消息后先去自身的方法列表里找匹配的selector，如果找不到，会沿着继承体系去superclass的方法列表找；如果还找不到，先后会经过`+resolveInstanceMethod:`和`-forwardingTargetForSelector:`处理，处理失败后，才会到`-methodSignatureForSelector:`/`-forwardInvocation:`进行最后的挣扎.
+
+但对于NSProxy，接收unknown selector后，直接回调`-methodSignatureForSelector:`/`-forwardInvocation:`，消息转发过程比class NSObject要简单得多。
+
+相对于class NSObject，NSProxy的另外一个非常重要的不同点也值得注意：NSProxy会将自省相关的selector直接forward到`-forwardInvocation:`回调中，这些自省方法包括：
+
+```objc
+- (BOOL)isKindOfClass:(Class)aClass;
+- (BOOL)isMemberOfClass:(Class)aClass;
+- (BOOL)conformsToProtocol:(Protocol *)aProtocol;
+- (BOOL)respondsToSelector:(SEL)aSelector;
+```
+
+简单来说，这4个selector的实际接收者realObject，而不是NSProxy对象本身。但另一方面，NSProxy并没有将performSelector系列selector也forward到`-forwardInvocation:`，换句话说，`[proxy performSelector:someSelector]`的真正处理者仍然是proxy自身，只是后续会将someSelector给forward到`-forwardInvocation`:回调，然后经由realObject处理。
+
 
 
 # 5、NSObject
@@ -557,34 +745,171 @@ NSProxy is an abstract superclass defining an API for objects that act as stand-
 > 经过优化的对象：
 >
 > 未经过优化的对象：
+>
+> 引用计数的存储位置分三种情况：
+>
+> * 特例：TaggedPointer对象：苹果会直接将其指针值作为引用计数返回
+> * 开启isa优化的对象（NONPOINTER_ISA == 1）：引用计数存储在isa_t中的`shiftcls`字段中
+> * 普通对象（NONPOINTER_ISA == 0） and  `shiftcls`字段越界的对象： 引用计数存储在SideTable中，通过对象的内存地址找到散列表周边保存的`retaincount`（最终值：`shiftcls` + `retaincount` + 1）
+>
+
+
 
 # 6、UIKit &Core Animation 
 
+### Objective-C 语言
+
+>  **Objective-C是面向对象的语言**
+>
+> Objective-C和Java C++一样，有封装，继承，多态，重用。但是它不像C++那样有重载操作法、模版和多继承，也没有Java的垃圾回收机制。
+>
+> **Objective-C的优点**
+>
+> Objective-C语言有C++ Java等面向对象的特点，那是远远不能体现它的优点的。Objective-C的优点是它是动态的。动态能力有三种：
+>
+> - **动态类**——运行时确定类的对象
+> - **动态绑定**——运行时确定要调用的方法
+> - **动态加载**——运行时为程序加载新的模块
+
+
+
+
+
 ## 6.1 UIKit 、Core Animation分别是用来做什么的？
+
+Core Animation是一个复合引擎，它的职责就是尽可能快地组合屏幕上不同的可视内容，这个内容是被分解成独立的图层，存储在一个叫做图层树的体系之中。于是这个树形成了UIKit以及在iOS应用程序当中你所能在屏幕上看见的一切的基础。
+
+UIKit 是在Core Animation之上做了一层基于iOS 端事件响应以及简单动画等一系列API的封装，避免开发者频繁使用底层API加重CPU负担。
 
 ## 6.2 为什么要同时存在这两种框架？
 
+> 原因在于要做职责分离，这样也能避免很多重复代码。在iOS和Mac OS两个平台上，事件和用户交互有很多地方的不同，基于多点触控的用户界面和基于鼠标键盘有着本质的区别，这就是为什么iOS有UIKit和UIView，但是Mac OS有AppKit和NSView的原因。他们功能上很相似，但是在实现上有着显著的区别
+>
 > 
 
 # 7、编译原理
 
 ## 7.1 应用的编译过程能说一下吗？
 
+以（包含Swift文件与Pods库）的项目为例：
+
+包含Swift文件与Pods库项目的编译可以分成三个大的过程：编译每个 pod 、编译整个 **Pod** 工程和编译主工程。
+
+- **第一个过程：Xcodeproj 工具会为每个 pod 单独创建一个 target ，具体编译过程如下：**
+
+  > 1. 1. 处理 **info.plist** 文件
+  >    2. **clang** 编译所有 **.m/.c/.mm** 源文件为 **.o** 目标文件
+  >    3. **Lb** 命令将 **.o** 文件链接成为一个 **Framework**
+  >    4. 拷贝所有 **.h** 头文件与 **.bundle** 资源文件到 **Xyz.framework/Headers** 目录
+  >    5. **codesign** 对 **Framework** 进行代码签名
+
+- **第二个过程：比较简单，主要就是生成了一个 Pod 工程的静态库**。
+
+- **第三个过程：编译主工程的过程，步骤较多：
+
+  > 1. 1. 写入一些辅助脚本文件到临时文件夹
+  >    2. 创建 **app** 目录
+  >    3. 检查 **Entitlements** 文件
+  >    4. 运行 **CocoaPods** 自定义脚本检查 **Manifest.lock**
+  >    5. 编译所有 **swift** 文件，然后 **merge** 成一个 **swiftmodule**
+  >    6. 拷贝 **Xyz-Swift.h** 头文件
+  >    7. 编译 **.xcdatamodeld** 数据模型文件
+  >    8. 编译 **.m/.c/.mm** 源文件
+  >    9. 拷贝 **.swiftmodule** 文件
+  >    10. 拷贝 **.swiftdoc** 文件
+  >    11. 链接 **.o** 目标文件
+  >    12. 用 **ibtool** 编译 **xib/storyboard UI**文件
+  >    13. 用 **actool** 编译 **AssetCatalog** 资源文件
+  >    14. 处理 **info.plist** 文件
+  >    15. 链接 **xibc/storyboardc** 文件
+  >    16. 运行 **CocoaPods** 自定义脚本嵌入生成的 **Pod framework**
+  >    17. 运行 **CocoaPods** 自定义脚本拷贝 **Pod** 里的资源
+  >    18. 拷贝 **Swift** 标准库到 **App** 中（包体积增大约**18M**）（**iOS12** 以上应该已经内置标准库，不需要再拷贝了）
+  >    19. **touch** 生成 **.app** 文件
+  >    20. 对 **App** 进行代码签名
+
+总结：
+
+> 1. 编译信息写入辅助文件，创建文件架构 .app 文件
+> 2. 处理文件打包信息
+> 3. 执行 CocoaPod 编译前脚本，checkPods Manifest.lock
+> 4. 编译.m文件，使用 CompileC 和 clang 命令
+> 5. *链接需要的 Framework*
+> 6. 编译 xib
+> 7. 拷贝 xib ，资源文件
+> 8. 编译 ImageAssets
+> 9. 处理 info.plist
+> 10. 执行 CocoaPod 脚本
+> 11. 拷贝标准库
+> 12. 创建 .app 文件和签名
+>
+> 不理解的地方可参考：[App程序编译的完整流程](https://acefish.github.io/15538518127841.html)
+
 ## 7.2 针对某一个源文件的编译，它又经过哪几步呢？
+
+### 1.2.1 预处理
+
+主要完成以下操作：
+
+> 1. import相关头文件
+> 2. 完成宏替换
+> 3. 处理以"#"开头的预处理命令
+> 4. 删除注释
+
+### 1.2.2 词法分析
+
+主要是完成： 将预处理过的代码里切成一个个 Token，比如大小括号，等于号还有字符串等
+
+### 1.2.3 语法分析
+
+> 1. 在 Clang 中由 Parser 和 Sema 两个模块配合完成
+> 2. 验证语法是否正确（比如语句末尾缺少分号）
+> 3. 根据当前语言的语法，生成语义节点，并将所有节点组合成抽象语法树（AST）
+
+### 1.2.4 静态分析
+
+> 1. 通过语法树进行代码静态分析，找出非语法性错误
+> 2. 模拟代码执行路径，分析出control-flow graph（CFG）
+
+### 1.2.5 code-gen(中间代码生成)
+
+> - CodeGen 负责将语法树从顶至下遍历，翻译成 LLVM IR。LLVM IR 是 Frontend 的输出，也是 LLVM Backend 的输入，前后端的桥接语言
+>
+> - 与 Objective-C Runtime 桥接：
+>
+>   > 主要内容包括：
+>   >
+>   > 1. Class / Meta Class / Protocol / Category 内存结构生成，并存放在指定 section 中（如 Class：_DATA，_objc_classrefs）
+>   > 2. Method / Ivar / Property 内存结构的生成
+>   > 3. 组成 method_list / ivar_list /property_list 并填入Class
+>   > 4. 将语法树中的 ObjCMessageExpr 翻译成相应版本的 objc_msgSend，对 super 关键字的调用翻译成 objc_msgSendSuper
+>   > 5. 根据修饰符 strong / weak / copy / atomic 合成 @property 自动实现的 setter / getter
+>   > 6. ARC：分析对象引用关系，将 objc_storeStrong / objc_storeWeak 等 ARC 代码插入
+>   > 7. 将 ObjCAutoreleasePoolStmt 转译成 objc_autoreleasePoolPush/Pop
+>   > 8. 实现自动调用 [super dealloc]
+>   > 9. 为每个拥有 ivar 的Class 合成 .cxx_destructor 方法来自动释放类的成员变量，代替 MRC 的 "self.xxx = nil"
+>   > 10. Non-Fragile ABI：为每个 Ivar 合成 OBJC_IVAR_$_ 偏移值常量
+>   > 11. 存取 Ivar 的语句 (*ivar = 123; int a = \*ivar;) 转写成 base + OBJC_IVAR\*$* 的形式
+>   > 12. 处理 @synthesize
+>   > 13. ⽣成 block_layout 的数据结构
+>   > 14. 变量的 capture (__block / __weak)
+>   > 15. ⽣成 _block_invoke 函数
 
 
 
 # 8、能说一下使用xib过程遇到的问题吗？
 
-
+https://www.jianshu.com/p/7d209c9761ba
 
 # 9、Https
 
 ## 9.1 能简单描述一下Https建立连接的过程吗？
 
+https://juejin.cn/post/7136170814990188558
+
 # 10、说一下LRU算法的数据结构吧？针对LRU结构的常见操作，它们的时间复杂度分别是多少？（查询、插入、删除）
 
-# 11、算法思路描述：两个子视图，寻找它们最近的共同父视图。
+# 11、算法：两个子视图，寻找它们最近的共同父视图。
 
 # 12、算法：检查两个单链表是否相交，如果相交返回相交节点。
 

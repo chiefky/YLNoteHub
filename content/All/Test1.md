@@ -183,18 +183,18 @@
 > 3. 使用block，类似iOS新增的接口
 >    ```objective-c
 >    @implementation NSTimer (SafeBlock)
->                                     
+>                                        
 >    + (instancetype)yl_ScheduledTimerWithTimeInterval:(NSTimeInterval)timeInterval repeats:(BOOL)repeats block:(void (^)(void))block {
 >        return [NSTimer scheduledTimerWithTimeInterval:timeInterval target:self selector:@selector(handle:) userInfo:[block copy] repeats:repeats];
 >    }
->                                     
+>                                        
 >    + (void)handle:(NSTimer *)timer {
 >        void(^block)(void) = timer.userInfo;
 >        if (block) {
 >            block();
 >        }
 >    }
->                                     
+>                                        
 >    @end
 >    ```
 >
@@ -238,7 +238,6 @@
 ### 5.2.1 Runloop 的理解?
 
  > **RunLoop是一种高级的循环机制，让程序持续运行，并处理程序中的各种事件，让线程在需要做事的时候忙起来，不需要的话就让线程休眠。**
->
  ### 5.2.2 主线程和子线程的Runloop 的区别？
 >主线程Runloop默认开启，子线程Runloop需要手动开启
  ### 5.2.3 怎么结束runloop？
@@ -273,6 +272,12 @@
 > 待：补
 
 # 7、多线程
+
+>#### GCD 
+>
+>
+>
+>
 
 ## 7.1 常用的多线程有哪几种？
 

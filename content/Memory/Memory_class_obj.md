@@ -825,13 +825,40 @@ _class_createInstanceFromZone(Class cls, size_t extraBytes, void *zone,
 
 # 5. 关于NSProxy与NSObject
 
-<img src="./image/Memory_layout-OC类与对象_NSObject.jpg" alt="NSobject" style="zoom:80%;" />
+<img src="./image/Memory_layout-OC类与对象_NSObject.jpg" alt="NSobject" style="zoom:65%;" />
 
-<img src="./image/Memory_layout-OC类与对象_NSProxy.jpg" style="zoom:80%;" />
+<img src="./image/Memory_layout-OC类与对象_NSProxy.jpg" style="zoom:60%;" />
 
-### 
+### 5.1 NSProxy的用法
 
-# 6.面试题
+NSProxy实现了包括NSObject协议在内基类所需的基础方法，但是作为一个抽象的基类并没有提供初始化的方法。它接收到任何自己没有定义的方法他都会产生一个异常，所以一个实际的子类必须提供一个初始化方法或者创建方法，并且重载`forwardInvocation:`方法和`methodSignatureForSelector:`方法来处理自己没有实现的消息。这也是NSProxy的主要功能，负责把消息转发给真正的target的代理类，NSProxy正是代理的意思。
+
+1. 解决NSTimer/CADisplayLink的循环引用问题
+
+2. 模拟多继承
+
+
+
+###5.2  NSProxy和NSObject的区别
+
+虽然NSProxy和class NSObject都定义了`-forwardInvocation:`和`-methodSignatureForSelector:`，但这两个方法并没有在protocol NSObject中声明；两者对这俩方法的调用逻辑更是完全不同。
+
+对于class NSObject而言，接收到消息后先去自身的方法列表里找匹配的selector，如果找不到，会沿着继承体系去superclass的方法列表找；如果还找不到，先后会经过`+resolveInstanceMethod:`和`-forwardingTargetForSelector:`处理，处理失败后，才会到`-methodSignatureForSelector:`/`-forwardInvocation:`进行最后的挣扎.
+
+但对于NSProxy，接收unknown selector后，直接回调`-methodSignatureForSelector:`/`-forwardInvocation:`，消息转发过程比class NSObject要简单得多。
+
+相对于class NSObject，NSProxy的另外一个非常重要的不同点也值得注意：NSProxy会将自省相关的selector直接forward到`-forwardInvocation:`回调中，这些自省方法包括：
+
+```objc
+- (BOOL)isKindOfClass:(Class)aClass;
+- (BOOL)isMemberOfClass:(Class)aClass;
+- (BOOL)conformsToProtocol:(Protocol *)aProtocol;
+- (BOOL)respondsToSelector:(SEL)aSelector;
+```
+
+简单来说，这4个selector的实际接收者realObject，而不是NSProxy对象本身。但另一方面，NSProxy并没有将performSelector系列selector也forward到`-forwardInvocation:`，换句话说，`[proxy performSelector:someSelector]`的真正处理者仍然是proxy自身，只是后续会将someSelector给forward到`-forwardInvocation`:回调，然后经由realObject处理。
+
+# 6. 面试题
 
 #### 什么是类？什么是对象？
 
@@ -928,7 +955,7 @@ _class_createInstanceFromZone(Class cls, size_t extraBytes, void *zone,
 >
 >     ```objective-c
 >     @interface YLAnimal : NSObject
->                           
+>                               
 >     + (id)newTestObject;  // 返回一个自动关联为YLAnimal类型的对象
 >     + (id)allocTestObject;// 返回一个自动关联为YLAnimal类型的对象
 >     + (id)testObject;// 返回一个类型不明的对象

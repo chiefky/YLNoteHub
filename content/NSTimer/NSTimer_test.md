@@ -1,5 +1,10 @@
 # 1、iOS 常用的计时器有哪几种，一般在什么场景下使用？
 
+- NSTimer和CADisplayLink依赖于RunLoop，如果RunLoop的任务过于繁重，可能会导致NSTimer不准时，相比之下GCD的定时器会更加准时，因为GCD不是依赖RunLoop，而是由内核决定
+- CADisplayLink和NSTimer会对target产生强引用，如果target又对它们产生强引用，那么就会引发循环引用
+
+
+
 ## 1.1 NSTimer
 
 > 使用场景：重复执行某种操作

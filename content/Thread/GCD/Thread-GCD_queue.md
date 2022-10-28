@@ -161,6 +161,18 @@ dispatch_apply(10, queue, ^(size_t idx) {
 
 # 2. 队列的服务质量与优先级
 
+> “**增加并发”在一定范围内可以作为启动优化的方案，但在低端机上，CPU 已经成为瓶颈，并发时异步线程对主线程的抢占也需要引起重视。**
+>
+> GCD 提供了四种 QoS 给开发者使用，官方也为这四种 QoS 提供了最佳实践建议。
+>
+> 经过评测和源码推理，User-Interactive 和 User-Initiated 对主线程有明显抢占，Utility 和 Background 对主线程的抢占极少。开发者创建的 GCD 队列，默认的 QoS 实际为 User-Initiated。因此在启动期间（或者任何耗时敏感期间），与启动无直接关系的 queue，应该主动设置为 Utility 或 Background，减少对主线程的抢占。
+>
+> 通过飞书上落地优化，我们能得出结论：对线程或 GCD queue 调整 QoS，能在不改变启动业务逻辑的情况下取得显著收益。
+>
+> 当然，比事后优化更好的操作，是在编码时就充分了解不同 QoS 的行为特性，选用最适合的 QoS。
+>
+> 参考：[不改一行业务代码，飞书 iOS 低端机启动优化实践](https://mp.weixin.qq.com/s/KQJ5QXHdhwHRN65KdD45qA)
+
 队列的服务质量与优先级的对应关系：
 
 ```objective-c
